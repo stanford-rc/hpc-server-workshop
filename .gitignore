@@ -1,0 +1,39 @@
+# Virtual environments. Every tier's setup block says `python -m venv venv`,
+# so `venv/` is the one that actually matters here.
+venv/
+.venv/
+env/
+
+# SLURM job output. The sbatch scripts write to logs/, and --output is resolved
+# at submit time, so each tier's README tells you to `mkdir -p logs` in setup.
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Workshop runtime artifacts — uploads and generated results. The committed
+# sample files under 04-web-gui/results/ are force-added; see .gitattributes
+# note in the README if you add more.
+04-web-gui/inputs/*
+!04-web-gui/inputs/README.md
+04-web-gui/results/*
+!04-web-gui/results/example_*
+
+# Slide build intermediates (slides-src/)
+slides-src/template.pptx
+slides-src/unpacked/
+slides-src/*.pdf
+slides-src/slide-*.jpg
+slides-src/*thumbs*.jpg
+
+# Model caches, if anyone points HF_HOME here by accident
+hf_cache/
+
+# macOS
+.DS_Store
+
+# Local agent/editor state
+.claude/
+.claude.json

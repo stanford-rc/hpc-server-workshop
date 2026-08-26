@@ -1,0 +1,21 @@
+job_id,user,partition,cluster,nodes,cpus,mem_gb,runtime_hours,status,submit_time
+1001,alice,normal,sherlock,1,8,32,2.5,completed,2024-01-15 09:00:00
+1002,bob,gpu,sherlock,1,4,16,0.8,failed,2024-01-15 10:30:00
+1003,carol,normal,sherlock,2,16,64,6.2,completed,2024-01-15 11:00:00
+1004,dave,bigmem,sherlock,1,32,256,12.1,completed,2024-01-15 08:00:00
+1005,alice,normal,sherlock,1,4,16,0.3,completed,2024-01-16 09:15:00
+1006,eve,gpu,sherlock,1,8,32,4.7,completed,2024-01-16 10:00:00
+1007,frank,normal,farmshare,1,2,8,1.1,completed,2024-01-16 13:00:00
+1008,bob,normal,sherlock,4,32,128,8.9,completed,2024-01-16 14:00:00
+1009,carol,gpu,sherlock,1,4,16,2.2,failed,2024-01-17 07:30:00
+1010,grace,normal,farmshare,1,1,4,0.5,completed,2024-01-17 08:00:00
+1011,dave,normal,sherlock,1,16,64,3.8,completed,2024-01-17 09:00:00
+1012,alice,bigmem,sherlock,1,64,512,18.4,completed,2024-01-17 10:00:00
+1013,heidi,normal,sherlock,1,8,32,1.6,pending,2024-01-17 14:00:00
+1014,ivan,gpu,sherlock,2,8,64,5.3,running,2024-01-17 14:30:00
+1015,frank,normal,farmshare,1,4,16,2.0,completed,2024-01-17 15:00:00
+1016,eve,normal,sherlock,1,8,32,0.9,completed,2024-01-18 09:00:00
+1017,grace,gpu,sherlock,1,4,32,6.8,completed,2024-01-18 10:00:00
+1018,bob,normal,sherlock,1,2,8,0.4,failed,2024-01-18 11:00:00
+1019,carol,normal,farmshare,1,8,16,3.1,completed,2024-01-18 12:00:00
+1020,heidi,gpu,sherlock,1,8,48,9.2,completed,2024-01-18 13:00:00

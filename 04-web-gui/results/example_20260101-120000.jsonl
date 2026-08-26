@@ -1,0 +1,2 @@
+{"prompt": "The Sherlock cluster is", "completion": "a shared computing system operated by Stanford Research Computing.", "model": "distilgpt2"}
+{"prompt": "To request a GPU on Sherlock you", "completion": "add --gpus=1 to your sbatch script and submit to the gpu partition.", "model": "distilgpt2"}

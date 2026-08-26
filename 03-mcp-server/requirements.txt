@@ -1,0 +1,4 @@
+# MCP 2.x renamed FastMCP to MCPServer. Pinning >=2 keeps this tier working
+# against the current API; the production server in this repo predates it.
+mcp>=2.0
+uvicorn[standard]

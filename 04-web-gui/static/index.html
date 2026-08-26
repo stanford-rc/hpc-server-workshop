@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+  index.html — the whole GUI. No framework, no build step, no CDN.
+
+  Every fetch() below uses a relative path ("/api/..."). Because this page is
+  served by the same FastAPI app that serves the API, "relative" resolves to
+  http://localhost:<your tunnel port> — same origin, so no CORS involved.
+
+  Swap the table and the upload form for whatever your research actually needs;
+  the plumbing underneath does not change.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HPC Job GUI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; }
+    th { font-weight: 600; }
+    .status { color: #666; font-size: 0.9rem; }
+    .err { color: #b00; }
+    button { padding: 0.3rem 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>HPC Job GUI</h1>
+  <p class="status" id="health">connecting…</p>
+
+  <h2>Results <button onclick="loadResults()">Refresh</button></h2>
+  <table>
+    <thead><tr><th>File</th><th>Size</th><th></th></tr></thead>
+    <tbody id="results"><tr><td colspan="3" class="status">loading…</td></tr></tbody>
+  </table>
+
+  <h2>Send an input file</h2>
+  <form id="upload-form">
+    <input type="file" id="file" required>
+    <button type="submit">Upload</button>
+  </form>
+  <p class="status" id="upload-status"></p>
+  <table>
+    <thead><tr><th>Uploaded</th><th>Size</th></tr></thead>
+    <tbody id="inputs"></tbody>
+  </table>
+
+<script>
+const fmtSize = (n) =>
+  n < 1024 ? `${n} B`
+  : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB`
+  : `${(n / 1024 ** 2).toFixed(1)} MB`;
+
+async function loadHealth() {
+  const el = document.getElementById("health");
+  try {
+    const h = await (await fetch("/health")).json();
+    el.textContent = `connected — node ${h.node}, port ${h.port}`;
+  } catch (e) {
+    el.textContent = "cannot reach the server — is the SSH tunnel still up?";
+    el.className = "status err";
+  }
+}
+
+async function loadResults() {
+  const body = document.getElementById("results");
+  const files = await (await fetch("/api/results")).json();
+  if (!files.length) {
+    body.innerHTML = `<tr><td colspan="3" class="status">no results yet</td></tr>`;
+    return;
+  }
+  // textContent (not innerHTML) for filenames — they may contain < or &.
+  body.replaceChildren(...files.map((f) => {
+    const tr = document.createElement("tr");
+    const name = document.createElement("td");
+    name.textContent = f.name;
+    const size = document.createElement("td");
+    size.textContent = fmtSize(f.size_bytes);
+    const dl = document.createElement("td");
+    const a = document.createElement("a");
+    a.href = `/api/results/${encodeURIComponent(f.name)}`;
+    a.textContent = "download";
+    dl.append(a);
+    tr.append(name, size, dl);
+    return tr;
+  }));
+}
+
+async function loadInputs() {
+  const files = await (await fetch("/api/inputs")).json();
+  document.getElementById("inputs").replaceChildren(...files.map((f) => {
+    const tr = document.createElement("tr");
+    const name = document.createElement("td");
+    name.textContent = f.name;
+    const size = document.createElement("td");
+    size.textContent = fmtSize(f.size_bytes);
+    tr.append(name, size);
+    return tr;
+  }));
+}
+
+document.getElementById("upload-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const input = document.getElementById("file");
+  const status = document.getElementById("upload-status");
+  const body = new FormData();
+  body.append("file", input.files[0]);
+
+  status.className = "status";
+  status.textContent = "uploading…";
+  const res = await fetch("/api/inputs", { method: "POST", body });
+  if (res.ok) {
+    const j = await res.json();
+    status.textContent = `uploaded ${j.name} (${fmtSize(j.size_bytes)})`;
+    input.value = "";
+    loadInputs();
+  } else {
+    status.className = "status err";
+    status.textContent = `upload failed: ${(await res.json()).detail ?? res.status}`;
+  }
+});
+
+loadHealth();
+loadResults();
+loadInputs();
+</script>
+</body>
+</html>

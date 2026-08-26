@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+
+# Multipart form parsing for the upload endpoint (FastAPI UploadFile).
+python-multipart
+requests
