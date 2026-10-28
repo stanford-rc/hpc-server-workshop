@@ -97,59 +97,60 @@ Two things just happened that the rest of the workshop relies on:
 ## 3. Ask it questions
 
 Open a **second terminal** on Sherlock. It starts on a login node, so first
-log in to the machine your session is on (use the name from your prompt):
+log in to the machine your session is on (the name in your session's prompt):
 
 ```bash
 ssh sh04-18n32
 ```
 
-This works because you have a job running there, and it puts you inside that
-same job: it shares the session's core and memory, and doesn't count as a
-second session. Then run the client:
+That puts you inside your session's job, sharing its core and memory. Start
+Python with the workshop's packages:
 
 ```bash
-cd ~/hpc-server-workshop/01-data-server
-bash submit_client.sh
+ml python/3.12.1
+source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
+python
 ```
 
-```
-Waiting for server at http://sh04-18n32.int:44636 ...
-Server is ready.
+In Python, read where the server is and your token:
 
-=== Cluster-wide stats ===
-  total_jobs: 20
-  by_cluster: {'sherlock': 16, 'farmshare': 4}
-  by_status: {'completed': 15, 'failed': 3, 'pending': 1, 'running': 1}
-  ...
+```python
+import os, requests
+url = "http://" + open(os.path.expandvars("$SCRATCH/hpc_workshop_server.txt")).read().strip()
+headers = {"x-token": open(os.path.expanduser("~/.hpc_workshop/token")).read().strip()}
 ```
 
-The client read the address file and your token, and sent the token with each
-question. Try a request without it:
+Now ask it things, one line at a time. Each answer comes straight back, because
+the server already has the table loaded:
 
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" "http://$(cat $SCRATCH/hpc_workshop_server.txt)/stats"
+```python
+requests.get(f"{url}/stats", headers=headers).json()
+requests.get(f"{url}/jobs", params={"status": "failed"}, headers=headers).json()
+requests.get(f"{url}/jobs/1004", headers=headers).json()
 ```
 
-`401` means "refused". Now with the token:
+`requests.get` sends one question to the server, with your token attached, and
+`.json()` turns the answer into Python lists and dictionaries. Each kind of
+question has its own **endpoint**, a path like `/stats` added to the end of the
+server's address:
 
-```bash
-curl -s -H "x-token: $(cat ~/.hpc_workshop/token)" "http://$(cat $SCRATCH/hpc_workshop_server.txt)/jobs?status=failed"
-```
-
-You get the three failed jobs back as JSON, the text format web servers use to
-send data.
-
-| Address | What it answers |
+| Endpoint | What it answers |
 |---------|-----------------|
-| `/health` | Whether the server is up, and how many records it has |
-| `/jobs` | Job records. Filters: `?cluster=sherlock&status=completed&limit=20` |
-| `/jobs/1004` | One job by its ID |
 | `/stats` | Totals and averages across all jobs |
+| `/jobs` | Job records. Filters: `cluster`, `status`, `limit` |
+| `/jobs/<id>` | One job by its ID |
+| `/health` | Whether the server is up |
+
+**Your turn:** which Farmshare jobs completed? (Hint:
+`params={"cluster": "farmshare", "status": "completed"}`.) Then ask for just the
+first three jobs.
+
+Type `exit()` to leave Python when you're done.
 
 ## 4. Look at it from your laptop
 
 FastAPI, the toolkit `server.py` is built with, makes a web page that lists
-every address and lets you try them. To see it in your laptop's browser you
+every endpoint and lets you try them. To see it in your laptop's browser you
 need an **SSH tunnel**: an SSH connection that carries a port on your laptop
 through to the server.
 
@@ -175,16 +176,16 @@ Now open **http://localhost:8080/docs** in your browser. Click **Authorize**,
 paste your token (`cat ~/.hpc_workshop/token` in a Sherlock terminal shows it),
 then open `/stats`, click **Try it out**, then **Execute**.
 
-> If your `~/.ssh/config` shares connections (`ControlMaster`, which Sherlock's
-> docs suggest to cut down on Duo prompts), a tunnel can stay open after
-> Ctrl-C, and the next one fails because port 8080 is taken. Close them all
-> with `ssh -O exit login.sherlock.stanford.edu`, or use another laptop port,
-> such as `-L 8081:...` and http://localhost:8081.
-
 ## 5. Stop
 
 Press Ctrl-C in the server's terminal, then type `exit` to leave the session
 (or let the hour run out). Ctrl-C in the laptop terminal closes the tunnel.
+
+## Tip: asking from a script
+
+A program can ask the same questions. `bash submit_client.sh` runs `client.py`,
+which asks three and prints the answers. That's how a batch job or a pipeline
+would use a server.
 
 ## Running it for real
 
@@ -200,7 +201,7 @@ sbatch submit_server.sh
 The `#SBATCH` lines at the top of the script say what the job asks for, with a
 comment on each. Batch jobs can't run on `dev`, so this one goes to Sherlock's
 standard machines and may wait in the queue first. Everything else works the
-same: the address file, the token, the client and the tunnel.
+same: the address file, the token and the tunnel.
 
 ## Your own Python packages
 
@@ -210,6 +211,7 @@ own for your projects, see "Making your own environment" in the
 
 ## Using your own data
 
-Swap `data/jobs.csv` for your own table and change the addresses in
-`server.py` to the questions you want to ask. The session, address file, token
+Swap `data/jobs.csv` for your own table, and change the endpoints in
+`server.py` (the functions under each `@app.get(...)` line) to the questions you
+want to ask. The session, address file, token
 and tunnel stay the same.

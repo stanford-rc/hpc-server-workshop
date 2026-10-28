@@ -164,5 +164,5 @@ switch the `MODEL_API` and `MODEL_ADDR_FILE` lines to the commented-out
 
 Point `RESULTS_DIR` in `submit_server.sh` at the folder your pipeline already
 writes to, and the page lists those files without any changes to `server.py`.
-To show a chart or a table instead of a file list, add an address to
+To show a chart or a table instead of a file list, add an endpoint to
 `server.py` that returns the numbers, and draw them in `index.html`.
