@@ -31,7 +31,7 @@ ADDR_FILE = Path(
         )
     )
 )
-MODEL = os.environ.get("MODEL", "llama3.2:1b")
+MODEL = os.environ.get("MODEL", "gemma3:4b")
 MAX_WAIT = int(os.environ.get("MAX_WAIT", 300))
 
 

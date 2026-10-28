@@ -26,8 +26,8 @@ export HF_HOME="$SCRATCH/hf_cache"
 export HF_HUB_CACHE="/home/groups/sh_support/bcritt/server_workshop/hf_cache/hub"
 export HF_HUB_OFFLINE=1
 
-# Which model to serve. distilgpt2 is tiny, for trying out the steps.
-export MODEL_NAME="distilgpt2"
+# Which model to serve: a small chat model that fits on a GPU slice.
+export MODEL_NAME="Qwen/Qwen2.5-1.5B-Instruct"
 
 module load python/3.12.1    # make Sherlock's Python 3.12 available
 # The workshop's shared Python packages. For your own project, make your own

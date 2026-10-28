@@ -76,16 +76,14 @@ def main():
         sys.exit(1)
 
     prompts = [
-        "The Sherlock HPC cluster at Stanford is",
-        "To run a GPU job on Sherlock, the SLURM command is",
-        "The best way to store large datasets on an HPC system is",
+        "In one sentence, what does the Slurm command sbatch do?",
+        "In one sentence: a job asks for 4 CPUs with 4000 MB of memory each. How much memory is that in GB?",
+        "In one sentence, why should job output go to scratch storage on a cluster?",
     ]
 
     for prompt in prompts:
-        print(f"\nPrompt: {prompt!r}")
-        result = generate(base_url, headers, prompt, max_new_tokens=60)
-        continuation = result[len(prompt):]
-        print(f"Output: {continuation.strip()}")
+        print(f"\nPrompt: {prompt}")
+        print(f"Answer: {generate(base_url, headers, prompt, max_new_tokens=150).strip()}")
 
 
 if __name__ == "__main__":

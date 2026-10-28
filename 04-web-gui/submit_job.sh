@@ -21,7 +21,7 @@ export INPUTS_DIR="$PWD/inputs"
 # Ollama (the workshop path):
 export MODEL_API="openai"
 export MODEL_ADDR_FILE="$SCRATCH/hpc_workshop_ollama.txt"
-export MODEL="${MODEL:-llama3.2:1b}"
+export MODEL="${MODEL:-gemma3:4b}"
 #
 # The transformers server instead:
 # export MODEL_API="generate"

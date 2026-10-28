@@ -50,7 +50,7 @@ TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_worksh
 # would add a failure mode that's awkward to debug from a job log.
 MODEL_API = os.environ.get("MODEL_API", "generate")
 # Only used by MODEL_API=openai — Ollama requires a model name in the request.
-MODEL = os.environ.get("MODEL", "llama3.2:1b")
+MODEL = os.environ.get("MODEL", "gemma3:4b")
 
 
 def model_base_url() -> str:
@@ -85,9 +85,8 @@ def model_headers() -> dict:
 def complete(base_url: str, prompt: str) -> tuple[str, str]:
     """Send one prompt. Returns (completion, model_name).
 
-    The two backends differ in more than the URL: /generate echoes the prompt
-    back as part of generated_text, while a chat completion returns only the
-    reply. Normalising that here keeps the output files identical either way.
+    Both model servers return only the reply, so the output files look the
+    same whichever one you use.
     """
     if MODEL_API == "openai":
         r = requests.post(
@@ -114,8 +113,7 @@ def complete(base_url: str, prompt: str) -> tuple[str, str]:
     )
     r.raise_for_status()
     payload = r.json()
-    # The pipeline echoes the prompt; keep only the continuation.
-    return payload["generated_text"][len(prompt):].strip(), payload["model"]
+    return payload["generated_text"].strip(), payload["model"]
 
 
 def pick_input(argv: list[str]) -> Path:

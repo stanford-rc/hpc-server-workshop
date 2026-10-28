@@ -6,20 +6,13 @@ On startup it picks a free port and writes "<machine>:<port>" to
 SERVER_ADDR_FILE so a client can find it. Every request must include the token
 from TOKEN_FILE, as in Tier 1.
 
-Default model: distilgpt2 (~300 MB, runs on CPU — good for testing).
-For real work: set MODEL_NAME to a larger model and request a GPU in sbatch.
+MODEL_NAME picks the model; it must be a chat model (one trained to answer
+instructions), since each prompt is sent as a chat message. The default,
+Qwen2.5-1.5B-Instruct, fits on a GPU slice.
 
-  export MODEL_NAME="meta-llama/Llama-3.2-1B"
-  sbatch submit_server.sh   # requests --gpus=1
-
-HuggingFace cache: set HF_HOME to $SCRATCH or $OAK so models persist across jobs.
-  export HF_HOME="$SCRATCH/hf_cache"
-
-Start manually:
-  python server.py
-
-Via SLURM:
-  sbatch submit_server.sh
+Start it:
+  bash submit_server.sh      # inside an sh_dev session
+  sbatch submit_server.sh    # or as a batch job
 """
 
 import os
@@ -34,7 +27,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from transformers import GenerationConfig, pipeline
 
-MODEL_NAME = os.environ.get("MODEL_NAME", "distilgpt2")
+MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-1.5B-Instruct")
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_model.txt"))
 # 0.0.0.0 = accept connections from any machine on Sherlock; the token keeps
 # everyone else out.
@@ -73,7 +66,9 @@ async def lifespan(app: FastAPI):
     print(f"Loading model: {MODEL_NAME} ...", flush=True)
     # device=0 uses the first GPU; device=-1 forces CPU.
     device = 0 if os.environ.get("CUDA_VISIBLE_DEVICES") else -1
-    generator = pipeline("text-generation", model=MODEL_NAME, device=device)
+    # torch_dtype="auto": load the model in the precision it was saved in (half
+    # precision here), which takes half the GPU memory of the default.
+    generator = pipeline("text-generation", model=MODEL_NAME, device=device, torch_dtype="auto")
     node = socket.gethostname()
     ADDR_FILE.parent.mkdir(parents=True, exist_ok=True)
     ADDR_FILE.write_text(f"{node}:{PORT}")
@@ -87,7 +82,7 @@ app = FastAPI(title="HPC Model Server", lifespan=lifespan, dependencies=[Depends
 class GenerateRequest(BaseModel):
     prompt: str
     max_new_tokens: int = 100
-    temperature: float = 1.0
+    temperature: float = 0.7  # lower = more predictable answers
 
 
 @app.get("/health")
@@ -97,7 +92,10 @@ def health():
 
 @app.post("/generate")
 def generate(req: GenerateRequest):
-    """Generate text continuation from a prompt.
+    """Answer one prompt.
+
+    The prompt is sent as a chat message, so the model answers it rather than
+    just continuing the text. The reply is the last message in the output.
 
     Generation parameters go in a single GenerationConfig rather than as loose
     keyword arguments. The pipeline always supplies a `generation_config` of its
@@ -114,8 +112,9 @@ def generate(req: GenerateRequest):
         temperature=req.temperature,
         do_sample=True,
     )
-    outputs = generator(req.prompt, generation_config=config)
-    return {"generated_text": outputs[0]["generated_text"], "model": MODEL_NAME}
+    outputs = generator([{"role": "user", "content": req.prompt}], generation_config=config)
+    reply = outputs[0]["generated_text"][-1]["content"]
+    return {"generated_text": reply, "model": MODEL_NAME}
 
 
 def main():

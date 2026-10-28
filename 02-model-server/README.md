@@ -10,7 +10,7 @@ There are two ways to do it, and you'll try both:
 |---|---|---|
 | What it is | A ready-made model server, installed on Sherlock as a module | A small server you write, using the Hugging Face `transformers` library |
 | You write | nothing | `server.py` (provided) |
-| Models | Ollama's collection; Sherlock keeps copies of many | almost any model on the Hugging Face Hub |
+| Models | Ollama's collection; Sherlock keeps a library of hundreds on Oak | almost any model on the Hugging Face Hub |
 | Who can reach it | only programs on the same machine | any machine on Sherlock, with your token |
 
 Ollama is the quick start. Your own server is what you'd use for a specific
@@ -51,9 +51,12 @@ bash submit_ollama.sh
 ```
 
 `ml` is short for `module load`: it makes Ollama available in this terminal.
-The script starts Ollama on a free port, fetches the model (`llama3.2:1b`, a
-small one) and writes Ollama's address to `$SCRATCH/hpc_workshop_ollama.txt`.
-In testing it was ready in about 40 seconds. Leave it running.
+The script starts Ollama on a free port, gets the model and writes Ollama's
+address to `$SCRATCH/hpc_workshop_ollama.txt`. The model is `gemma3:4b`, a
+4-billion-parameter model from Google that fits easily on a slice (about
+3 GB). You don't download it from the internet: Sherlock keeps a library of
+Ollama models on Oak, and the first time you use one it's copied into your
+scratch space (the script prints "found in on-prem cache"). Leave it running.
 
 Ollama doesn't have a password or token, so it only accepts connections from
 the machine it runs on. To talk to it, open a **second terminal**, log in to
@@ -67,18 +70,29 @@ source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 python ollama_client.py
 ```
 
-The second and third commands make the workshop's Python packages available,
-the same two lines every script in this workshop starts with. After about 15
-seconds you get two answers. Read them closely: a model this small often
-sounds sure of itself and is wrong. In testing it explained "SLURM" with a
-made-up name. That's normal for small models, and a good reason to check what
-a model tells you.
+The third and fourth commands make the workshop's Python packages available,
+the same two lines every script in this workshop starts with. (If you see a
+note that `gcc` was reloaded with a version change, that's harmless.) In
+testing the two answers took about 20 seconds.
 
-To try another model, stop Ollama with Ctrl-C in the first terminal and start
-it again with `MODEL=<name> bash submit_ollama.sh`, then run the client with the
-same `MODEL=<name>` in front. Model names are listed at ollama.com/library; keep
-to small ones on a GPU slice. If Sherlock already has a copy, fetching it is
-quick.
+**Compare a smaller model.** Stop Ollama with Ctrl-C in the first terminal,
+start it with `MODEL=llama3.2:1b bash submit_ollama.sh`, and run
+`MODEL=llama3.2:1b python ollama_client.py` in the second. Small models often
+sound sure of themselves and are wrong: in testing, `llama3.2:1b` and
+`llama3.2:3b` both expanded "SLURM" into a made-up name, and `phi4-mini`
+multiplied 4 × 4000 MB into "32000 GB", while `gemma3:4b` got all three test
+questions right. Check what a model tells you, and test a few before you pick
+one.
+
+To see every model Sherlock has, list the library:
+
+```bash
+ls /oak/stanford/datasets/common/ollama/manifests/registry.ollama.ai/library
+```
+
+The folder names are the model names; the files inside each are its sizes (for
+example `gemma3` has `1b`, `4b`, `12b`, `27b`). On a GPU slice, stay at about
+4b or below.
 
 Stop Ollama with **Ctrl-C** before part B, so the two don't compete for the
 slice's memory.
@@ -91,35 +105,36 @@ In the first terminal (the session):
 bash submit_server.sh
 ```
 
-This starts `server.py`, which loads `distilgpt2`, a tiny text model, onto the
-GPU. For the workshop the model is already downloaded to a shared folder, so
-nothing has to be fetched. Loading takes about a minute. When it prints
+This starts `server.py`, which loads `Qwen2.5-1.5B-Instruct` onto the GPU: a
+small model from Alibaba, trained to answer questions, with a license that
+lets anyone use it. Hugging Face models aren't in Sherlock's Ollama library, so
+for the workshop it's already downloaded to a shared folder, and nothing has
+to be fetched. In testing it was ready in 20 to 60 seconds. When it prints
 `Model ready on <machine>:<port>`, run the client in the second terminal:
 
 ```bash
 bash submit_client.sh
 ```
 
-Each prompt comes back with a continuation. `distilgpt2` is old and tiny, so
-the text is mostly nonsense. What matters here is the steps, not the model.
+Three questions come back with one-sentence answers, in a few seconds.
 
 Like Tier 1, this server can be reached from any machine on Sherlock, so it
 uses your token. Here is the same request by hand:
 
 ```bash
-curl -s -H "x-token: $(cat ~/.hpc_workshop/token)" -H "Content-Type: application/json" -d '{"prompt": "The cluster is", "max_new_tokens": 30}' "http://$(cat $SCRATCH/hpc_workshop_model.txt)/generate"
+curl -s -H "x-token: $(cat ~/.hpc_workshop/token)" -H "Content-Type: application/json" -d '{"prompt": "In one sentence, what is a GPU?", "max_new_tokens": 60}' "http://$(cat $SCRATCH/hpc_workshop_model.txt)/generate"
 ```
 
 Stop it with Ctrl-C, and `exit` the session when you're done.
 
 ### Choosing a model
 
-`distilgpt2` is only there to test the steps. For real work, set `MODEL_NAME`
-in `submit_server.sh` to any text-generation model on the Hugging Face Hub. A
-few things to know:
+Set `MODEL_NAME` in `submit_server.sh` to another chat model on the Hugging
+Face Hub (look for "Instruct" or "chat" in the name). A few things to know:
 
-- **Size.** A GPU slice has 6 GB of memory, enough for models up to about a
-  billion parameters. `server.py` uses one GPU, so bigger models need a full GPU
+- **Size.** A GPU slice has 6 GB of memory. `server.py` loads models in half
+  precision, about 2 GB per billion parameters, so stay at about 2 billion
+  parameters or below on a slice. `server.py` uses one GPU, so bigger models need a full GPU
   in a batch job (see "Running it for real") and possibly changes to `server.py`.
 - **Downloads.** Outside the workshop, remove the `HF_HUB_CACHE` and
   `HF_HUB_OFFLINE` lines from `submit_server.sh`. The model then downloads once
@@ -137,7 +152,8 @@ main reason to write your own server. Many of them don't generate text; they
 classify it, fill in missing words or turn it into numbers. For those, change
 `pipeline("text-generation", ...)` in `server.py` to the task you need
 (`fill-mask`, `feature-extraction`, `text-classification`,
-`token-classification`) and adjust what `/generate` returns. The session,
+`token-classification`), and change `/generate` to pass in the plain text
+(not a chat message) and return what that task produces. The session,
 address file and token don't change.
 
 ## Running it for real

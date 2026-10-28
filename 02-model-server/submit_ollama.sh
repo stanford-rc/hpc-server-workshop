@@ -29,7 +29,7 @@ set -uo pipefail
 # Which model to serve. Override with MODEL=... ; keep it small enough for a
 # GPU slice. Sherlock keeps copies of many popular models. When the model is
 # one of them, the download step below prints "found in on-prem cache".
-MODEL="${MODEL:-llama3.2:1b}"
+MODEL="${MODEL:-gemma3:4b}"
 
 # Only accept connections from this same machine (127.0.0.1). Ollama has no
 # password, so opening it to the whole cluster (0.0.0.0) would let anyone on

@@ -56,122 +56,119 @@ def para(*parts): return list(parts)
 # ── 1. Title ────────────────────────────────────────────────────────────────
 write('slide1.xml', [
     ('type="ctrTitle"', [T("Running Servers on Sherlock")], 2800),
-    ('type="subTitle"', [T("Five tiers of one SLURM pattern — from a REST API to a browser GUI")], 1400),
+    ('type="subTitle"', [T("Start one in a session, find it, keep it private, and reach it")], 1400),
 ])
 
-# ── 2. Two problems ─────────────────────────────────────────────────────────
+# ── 2. Three questions ──────────────────────────────────────────────────────
 write('slide2.xml', [
-    ('type="title"', [T("Two problems, every single time")], 2800),
+    ('type="title"', [T("Three questions, every time")], 2800),
     ('type="body"', [
-        para(("Where is it?  ", "b"), ("SLURM picks the node, so you cannot hardcode a hostname. The server writes its own address to a file in $SCRATCH; clients read that file.", "")),
-        para(("How do I reach it?  ", "b"), ("A compute node is not reachable from your laptop. You either forward a port to it, or use a browser that is already inside the cluster.", "")),
-        para(("Everything here is those two problems, solved the same way five times.", "b")),
+        para(("Where is it?  ", "b"), ("You don't choose the node, so the server writes its machine and port to a file in $SCRATCH.", "")),
+        para(("Who can use it?  ", "b"), ("Any machine on Sherlock can reach it, so every request carries your token.", "")),
+        para(("How do I reach it?  ", "b"), ("From Sherlock, ssh to its machine. From your laptop, one SSH tunnel.", "")),
+        para(("Every tier answers these three the same way.", "b")),
     ], 1500),
 ])
 
-# ── 3. Five tiers ───────────────────────────────────────────────────────────
-write('slide2.xml'.replace('2', '6'), [
-    ('type="title"', [T("The five tiers")], 2800),
+# ── 3. The day ──────────────────────────────────────────────────────────────
+write('slide6.xml', [
+    ('type="title"', [T("The day")], 2800),
     ('type="body"', [
-        para(("01  Data server  ", "b"), ("— serve a CSV over REST.  Any compute node.", "")),
-        para(("02  Model server  ", "b"), ("— ml ollama on an instant MIG slice.", "")),
-        para(("03  MCP server  ", "b"), ("— give Claude structured tool access.  No GPU.", "")),
-        para(("04  Web GUI  ", "b"), ("— drive a job from your laptop's browser.  Any node.", "")),
-        para(("05  OnDemand  ", "b"), ("— the same, in-browser, with no tunnel at all.", "")),
-        para(("Each is self-contained. The discovery and tunnel patterns are identical in all five.", "")),
+        para(("Morning  ", "b"), ("Tier 1: a data server.  Tier 2: a language model on a GPU.", "")),
+        para(("Afternoon  ", "b"), ("Tier 3: tools for Claude (MCP).  Tier 4: a web page for your job.", "")),
+        para(("On your own  ", "b"), ("Tier 5: Open OnDemand, with no tunnel.", "")),
+        para(("Everything runs in ", ""), ("sh_dev", "mono"), (" sessions, with Sherlock's modules and a shared set of Python packages. Nothing to install.", "")),
     ], 1400),
 ])
 
-# ── 4. Discovery (two-column) ───────────────────────────────────────────────
+# ── 4. Where (two-column) ───────────────────────────────────────────────────
 write('slide4.xml', [
-    ('idx="2" type="title"', [T("1. Discovery")], 2400),
+    ('idx="2" type="title"', [T("1. Where is it?")], 2400),
     ('type="title"', [T("The server writes down where it landed")], 1800),
     ('type="body"', [
-        para(("$ cat $SCRATCH/hpc_workshop_gui.txt", "mono")),
-        para(("sh03-01n52:41235", "bmono")),
-        para(("An ephemeral port, so two people on one node don't collide.", "")),
-        para(("<node>:<port> is the format the Sherlock Ollama docs use — both halves pull straight back out with shell expansion.", "")),
+        para(("$ cat $SCRATCH/hpc_workshop_server.txt", "mono")),
+        para(("sh04-18n32.int:44636", "bmono")),
+        para(("It picks a free port, so people on the same machine don't clash.", "")),
+        para(("To use it from another terminal, ", ""), ("ssh sh04-18n32", "mono"), (" first. You land inside your session's job.", "")),
     ], 1200),
 ])
 
-# ── 5. The tunnel ───────────────────────────────────────────────────────────
+# ── 5. Who ──────────────────────────────────────────────────────────────────
 write('slide7.xml', [
-    ('type="title"', [T("2. The tunnel — where everyone trips")])if False else ('type="title"', [T("2. The tunnel — where everyone trips")], 2800),
+    ('type="title"', [T("2. Who can use it? The token")], 2800),
     ('type="body"', [
-        para(("The bind address and the tunnel target must agree.", "b")),
-        para(("Server on 127.0.0.1  →  ", ""), ("ssh -NfL 8080:localhost:PORT NODE", "mono")),
-        para(("      Encrypted end to end. Needs a running job on that node.", "")),
-        para(("Server on 0.0.0.0  →  ", ""), ("ssh -NfL 8080:NODE:PORT login.sherlock", "mono")),
-        para(("      Works without node access, but the last hop is cleartext internally.", "")),
-        para(("Then open http://localhost:8080 — localhost, not the node name.", "")),
-    ], 1400),
+        para(("python3 -c \"import secrets; print(secrets.token_urlsafe(32))\" > ~/.hpc_workshop/token", "mono")),
+        para(("chmod 600 ~/.hpc_workshop/token", "mono")),
+        para(("Every request sends it; without it the server answers 401.", "")),
+        para(("For your lab: ", "b"), ("a group-readable token file in $GROUP_HOME.", "")),
+        para(("Ollama has no token, so it only accepts connections from its own machine.", "")),
+    ], 1300),
 ])
 
-# ── 6. Tier 4 ───────────────────────────────────────────────────────────────
+# ── 6. Reach ────────────────────────────────────────────────────────────────
 write('slide8.xml', [
-    ('type="title"', [T("Tier 4 — a page you actually wrote")], 2800),
+    ('type="title"', [T("3. How do I reach it from my laptop?")], 2800),
     ('type="body"', [
-        para(("upload an input  →  job runs on the cluster  →  download the output", "b")),
-        para(("The page and the API come from one FastAPI app. Same origin, so there is no CORS to configure, no second web server, and no build step.", "")),
-        para(("Serve them separately and you hit cross-origin errors immediately — which is when people start pasting wildcard CORS onto an unauthenticated server.", "")),
-        para(("Point RESULTS_DIR at a directory your pipeline already writes to and the page lists those files with no code changes.", "")),
+        para(("One command on your laptop:", "b")),
+        para(("ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu", "mono")),
+        para(("Then open http://localhost:8080. Your laptop's port 8080 now leads to the server.", "")),
+        para(("SUNet password and Duo as usual. Ctrl-C closes the tunnel.", "")),
+        para(("If your SSH config shares connections (ControlMaster), a closed tunnel can keep the port. ", ""), ("ssh -O exit", "mono"), (" frees it.", "")),
     ], 1400),
 ])
 
-# ── 7. Tier 5 ───────────────────────────────────────────────────────────────
+# ── 7. Tier 2 ───────────────────────────────────────────────────────────────
 write('slide9.xml', [
-    ('type="title"', [T("Tier 5 — OnDemand, no tunnel")], 2800),
+    ('type="title"', [T("Tier 2: a model on a GPU slice")], 2800),
     ('type="body"', [
-        para(("An OOD session already runs on a compute node. The browser is inside the cluster, so nothing needs forwarding.", "b")),
-        para(("Jupyter, code-server, RStudio, TensorBoard, Interactive Desktop, and a file browser — all there, no code required.", "")),
-        para(("For \"I just want my results on my laptop,\" the Files menu already does it.", "")),
-        para(("To let your lab launch your own tool from the dashboard, you package it as a custom interactive app — that one needs SRCC.", "")),
+        para(("sh_dev -g 1 -m 8000", "mono"), ("  one slice of a GPU (6 GB), usually right away", "")),
+        para(("Ollama:  ", "b"), ("ml ollama", "mono"), (". Models come from Sherlock's library on Oak; we use gemma3:4b.", "")),
+        para(("Your own server:  ", "b"), ("Hugging Face transformers with Qwen2.5-1.5B-Instruct, behind your token.", "")),
+        para(("Test models before you trust them. ", "b"), ("Smaller ones made up what SLURM stands for, or turned 4 × 4000 MB into 32000 GB.", "")),
     ], 1400),
 ])
 
-# ── 8. Tier 3 MCP ───────────────────────────────────────────────────────────
+# ── 8. Tier 3 ───────────────────────────────────────────────────────────────
 write('slide10.xml', [
-    ('type="title"', [T("Tier 3 — MCP: tools here, model there")], 2800),
+    ('type="title"', [T("Tier 3: tools for Claude")], 2800),
     ('type="body"', [
-        para(("You expose tools. Claude decides which to call.", "b")),
-        para(("Ask \"how do I stop hitting my quota?\" and it picks search_docs, then read_doc, and answers from what it finds. You never name an endpoint.", "")),
-        para(("No GPU, and no model on the cluster — this process reads files and matches strings. The tools and the model are separate services; that is the point of MCP.", "")),
-        para(("Streamable HTTP is ordinary HTTP, so it forwards through the very same tunnel as tier 4.", "")),
+        para(("MCP lets you give Claude tools. Claude decides which to call.", "b")),
+        para(("The server offers three: list, search and read a folder of documents. No GPU needed.", "")),
+        para(("Claude Code runs on Sherlock too: ", ""), ("ml claude-code", "mono"), (", signed in with your Stanford account.", "")),
+        para(("On Sherlock, Claude already reads Sherlock's own guidance, so it uses your tools when the question needs them. Questions and tool results go to Anthropic.", "")),
     ], 1400),
 ])
 
-# ── 9. ASIDE — private options (two-column) ─────────────────────────────────
+# ── 9. Tier 4 (two-column) ──────────────────────────────────────────────────
 write('slide12.xml', [
-    ('idx="2" type="title"', [T("Aside")], 2400),
-    ('type="title"', [T("Keeping it all on Sherlock")], 1800),
+    ('idx="2" type="title"', [T("Tier 4")], 2400),
+    ('type="title"', [T("A web page for your job")], 1800),
     ('type="body"', [
-        para(("Tier 3's default sends your prompts and the retrieved text to Anthropic.", "")),
-        para(("To keep it inside Stanford, run the model here too: ", ""), ("ml ollama", "mono"), (" on a GPU node — the same service pattern as tier 2, endpoint in ~/.ollama_server.", "")),
-        para(("Then either point a CLI agent at it (OpenCode, Crush and pi all take an OpenAI-compatible base_url), or forward two ports and drive it from a local editor.", "")),
-        para(("Caveat: ", "b"), ("small local models are markedly worse at multi-step tool calling, and Ollama caps context at 4k under 24 GB of GPU memory — raise num_ctx first or agents simply fail.", "")),
+        para(("upload an input  →  run the job  →  download the results", "b")),
+        para(("One server sends both the page and the data behind it, so there's nothing extra to set up.", "")),
+        para(("Paste your token into the page once; the browser keeps it as a cookie, so plain download links work.", "")),
+        para(("The job only reads inputs/ and writes results/. Your own script can take its place.", "")),
     ], 1100),
 ])
 
-# ── 10. TIP — HuggingFace instead of Ollama (two-column) ────────────────────
+# ── 10. Running it for real (two-column) ────────────────────────────────────
 write('slide13.xml', [
-    ('idx="2" type="title"', [T("Tip")], 2400),
-    ('type="title"', [T("When you want HuggingFace instead")], 1800),
+    ('idx="2" type="title"', [T("After today")], 2400),
+    ('type="title"', [T("Running it for real")], 1800),
     ('type="body"', [
-        para(("The headline: pre-tuned, domain- and task-specific models.", "b")),
-        para(("The Hub carries models already tuned for a field or a task — scientific text, biomedical literature, protein sequences — that Ollama's library doesn't have. A model that knows your domain usually beats a bigger general one, on less GPU.", "")),
-        para(("Also for gated models, quantization you control, and reproducible batch inference.", "")),
-        para(("What changes: ", "b"), ("you write the server; ", ""), ("module load pytorch", "mono"), (" rather than pip-installing torch; set ", ""), ("HF_HOME=$SCRATCH/hf_cache", "mono"), (" or you re-download weights every job; ask for a full GPU, not a MIG slice. And if the model is an encoder, change the pipeline task — text-generation is the wrong one.", "")),
-        para(("Tier 2 in the repo ships both paths, scripts included.", "b")),
+        para(("Longer than a session: ", "b"), ("mkdir -p logs; sbatch submit_server.sh", "mono"), (". Batch jobs go to normal or gpu, not dev, and may wait in the queue.", "")),
+        para(("Your own packages: ", "b"), ("uv venv and uv pip install --no-build in $GROUP_HOME. Plain python on Sherlock is Python 2; use python3.", "")),
+        para(("Your own data: ", "b"), ("swap the table, the model, the documents or the job. The session, address file, token and tunnel stay the same.", "")),
     ], 1000),
 ])
 
-# ── 10. Where to start ──────────────────────────────────────────────────────
+# ── 11. Where next ──────────────────────────────────────────────────────────
 write('slide11.xml', [
-    ('type="title"', [T("Where to start")], 2800),
+    ('type="title"', [T("Where to go next")], 2800),
     ('type="body"', [
-        para(("Never run a server in a batch job?  ", "b"), ("Tier 1. The SLURM patterns there are identical in all five tiers.", "")),
-        para(("Already have results you want to see?  ", "b"), ("Tier 5 — it needs no code at all.", "")),
-        para(("Want a page of your own?  ", "b"), ("Tier 4, then tier 3 once you'd rather ask questions than click.", "")),
-        para(("One warning: none of these servers authenticate anyone. The SSH tunnel is doing that job — keep them on loopback and off public ports.", "")),
+        para(("No tunnel at all?  ", "b"), ("Tier 5: an OnDemand session is already inside Sherlock.", "")),
+        para(("Keep the token.  ", "b"), ("Don't put research data behind a server anyone on Sherlock can query.", "")),
+        para(("Not on the public internet.  ", "b"), ("The way in from outside is SSH with your SUNet ID and Duo.", "")),
+        para(("Something shared and long-running?  ", "b"), ("That needs a proper service: talk to SRCC.", "")),
     ], 1400),
 ])
