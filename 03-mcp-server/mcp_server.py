@@ -1,40 +1,38 @@
 """
 mcp_server.py — MCP server over Streamable HTTP (Tier 3).
 
-Exposes a directory of documentation as MCP tools. Claude (Desktop or Code) on
-your laptop connects through an SSH tunnel, discovers these tools, and decides
-which to call based on your question — you never name an endpoint.
+Offers a folder of documentation as three MCP tools. Claude Code connects,
+sees the tools, and decides which to call to answer your question.
 
-Where the model runs: not here. This process does file reads and string
-matching, needs no GPU, and holds no model. Anthropic runs the model on the
-client side. That separation is the whole point of MCP, and it's why this tier
-is cheap to host. For a fully-local alternative, see "Keeping it all on
-Sherlock" in README.md.
+The model doesn't run here: this server only reads files and searches their
+text, so it needs no GPU. The model runs at Anthropic, behind Claude Code.
 
-Transport is Streamable HTTP (the current MCP standard), which means this is
-ordinary HTTP and forwards through exactly the same SSH tunnel as Tier 4.
-The MCP endpoint is at /mcp.
+The MCP address is /mcp. Every request must include the token from TOKEN_FILE
+(see Tier 1).
 
-Start manually:
-  python mcp_server.py
-
-Via SLURM:
-  sbatch submit_server.sh
+Start it:
+  bash submit_server.sh      # inside an sh_dev session
+  sbatch submit_server.sh    # or as a batch job
 """
 
 import os
+import secrets
 import socket
 from pathlib import Path
 
 import uvicorn
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.responses import PlainTextResponse
 
 BASE_DIR = Path(__file__).parent
 DOCS_DIR = Path(os.environ.get("DOCS_DIR", BASE_DIR / "docs"))
 
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_mcp.txt"))
-BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
+# 0.0.0.0 = accept connections from any machine on Sherlock; the token keeps
+# everyone else out.
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
 
 
 def pick_port() -> int:
@@ -123,16 +121,35 @@ def search_docs(query: str) -> list[dict]:
     return hits
 
 
+class RequireToken:
+    """Refuse any request that doesn't carry the token in an "x-token" header."""
+
+    def __init__(self, app, token: str):
+        self.app, self.token = app, token
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            given = dict(scope["headers"]).get(b"x-token", b"").decode()
+            if not secrets.compare_digest(given, self.token):
+                await PlainTextResponse("Missing or wrong token", status_code=401)(
+                    scope, receive, send
+                )
+                return
+        await self.app(scope, receive, send)
+
+
 def main():
+    if not TOKEN_FILE.exists():
+        raise SystemExit(f"No token file at {TOKEN_FILE}. Make one first (see the Tier 1 README).")
+    token = TOKEN_FILE.read_text().strip()
+
     node = socket.gethostname()
     ADDR_FILE.parent.mkdir(parents=True, exist_ok=True)
     ADDR_FILE.write_text(f"{node}:{PORT}")
 
-    # DNS-rebinding protection is on by default and checks the Host header.
-    # Through the tunnel the browser/client sends "localhost:<local port>",
-    # which is NOT this server's own host — so it has to be allowed explicitly
-    # or every request fails with "Invalid request host". The local port is
-    # yours to choose, so allow the usual suspects plus $ALLOWED_HOSTS.
+    # The MCP library only answers requests addressed to names it knows. Through
+    # the tunnel, requests arrive addressed to "localhost:<your laptop's port>",
+    # so list the common laptop ports here; add others with $ALLOWED_HOSTS.
     extra = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h]
     allowed = [
         "localhost", "127.0.0.1",
@@ -147,16 +164,14 @@ def main():
     )
 
     print(
-        f"MCP server on {BIND_HOST}:{PORT} (node {node})\n"
+        f"MCP server on {node}:{PORT}\n"
         f"Docs: {DOCS_DIR} ({len(list(DOCS_DIR.glob('*.md')))} files)\n"
         f"Address written to {ADDR_FILE}\n"
-        f"From your laptop:\n"
-        f"  ssh -NfL 8080:localhost:{PORT} {node}\n"
-        f"  claude mcp add --transport http workshop-docs http://localhost:8080/mcp",
+        f"To connect Claude Code, see step 2 in README.md.",
         flush=True,
     )
 
-    uvicorn.run(app, host=BIND_HOST, port=PORT, log_level="info")
+    uvicorn.run(RequireToken(app, token), host=BIND_HOST, port=PORT, log_level="info")
 
 
 if __name__ == "__main__":

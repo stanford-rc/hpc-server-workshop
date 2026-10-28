@@ -1,31 +1,27 @@
 #!/bin/bash
-#SBATCH --job-name=web-gui
-#SBATCH --time=4:00:00
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=4G
-#SBATCH --output=logs/server_%j.out
+#SBATCH --job-name=web-gui           # name shown in the queue
+#SBATCH --time=1:00:00               # stop the job after this long (hours:minutes:seconds)
+#SBATCH --ntasks=1                   # run one copy of the program
+#SBATCH --cpus-per-task=2            # CPU cores for it
+#SBATCH --mem=4G                     # memory (RAM) for the job
+#SBATCH --output=logs/server_%j.out  # save what the job prints here (%j becomes the job ID)
 
-# The server writes "<node>:<port>" here; you read it to build the SSH tunnel.
+# The server writes "<machine>:<port>" here; you need it for the SSH tunnel.
 export SERVER_ADDR_FILE="$SCRATCH/hpc_workshop_gui.txt"
 
-# Where the page reads results from and writes uploads to. Point RESULTS_DIR at
-# your real output directory to browse actual job results.
+# Where the page lists results from, and where uploads go. Point RESULTS_DIR
+# at your own output folder to browse real job results.
 export RESULTS_DIR="$PWD/results"
 export INPUTS_DIR="$PWD/inputs"
 
-# Loopback-only. Nothing else on the cluster can reach this port, and the
-# default tunnel form (ssh directly to the compute node) still works because
-# the forward terminates on the node's own localhost.
-#
-# Switch to 0.0.0.0 ONLY if you need the login-node tunnel form. That exposes
-# an unauthenticated server to every user on the cluster network. See README.md.
-export BIND_HOST="127.0.0.1"
+# Any machine on Sherlock can connect; requests need your token (see Tier 1).
+export BIND_HOST="0.0.0.0"
 
-# Leave PORT unset so the server picks a free ephemeral port and avoids
-# colliding with anyone else on the same node.
+# PORT is left unset, so the server picks a free port and writes it down.
 
-module load python/3.12.1
-source venv/bin/activate
+module load python/3.12.1    # make Sherlock's Python 3.12 available
+# The workshop's shared Python packages. For your own project, make your own
+# environment (see the README) and activate that instead.
+source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 
 python server.py

@@ -17,6 +17,7 @@ Usage:
 """
 
 import os
+import socket
 import sys
 import time
 from pathlib import Path
@@ -24,8 +25,10 @@ from pathlib import Path
 import requests
 
 ADDR_FILE = Path(
-    os.path.expanduser(
-        os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_ollama.txt")
+    os.path.expandvars(
+        os.path.expanduser(
+            os.environ.get("SERVER_ADDR_FILE", "$SCRATCH/hpc_workshop_ollama.txt")
+        )
     )
 )
 MODEL = os.environ.get("MODEL", "llama3.2:1b")
@@ -33,7 +36,12 @@ MAX_WAIT = int(os.environ.get("MAX_WAIT", 300))
 
 
 def base_url() -> str:
-    """Read the endpoint. Accepts "<host>:<port>" or a full URL."""
+    """Read "<machine>:<port>" and return a URL that works from here.
+
+    Ollama only accepts connections from its own machine (127.0.0.1) because it
+    has no password. So this must run on that machine, and connects to
+    "localhost" rather than the machine's name.
+    """
     if not ADDR_FILE.exists():
         sys.exit(
             f"Address file not found: {ADDR_FILE}\n"
@@ -42,8 +50,15 @@ def base_url() -> str:
             "or:\n"
             "  sbatch submit_ollama.sh"
         )
-    addr = ADDR_FILE.read_text().strip()
-    return addr if addr.startswith("http") else f"http://{addr}"
+    node, port = ADDR_FILE.read_text().strip().removeprefix("http://").rsplit(":", 1)
+    here = socket.gethostname()
+    if node.split(".")[0] != here.split(".")[0]:
+        sys.exit(
+            f"Ollama is running on {node}, but this terminal is on {here}.\n"
+            f"From a login node, run:  ssh {node}\n"
+            "then run this again there."
+        )
+    return f"http://localhost:{port}"
 
 
 def wait_for_model(url: str, model: str, timeout: int = MAX_WAIT) -> bool:

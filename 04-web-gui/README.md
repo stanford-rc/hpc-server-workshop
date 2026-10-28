@@ -1,221 +1,168 @@
-# Tier 4 — Web GUI
+# Tier 4: A web page for your job
 
-Drive a job from a browser on your own laptop: upload an input, run the job,
-download the output. This is the tier that answers "can I build a small site to
-interact with my research data?"
+Put a simple web page in front of a job, and use it from your laptop's
+browser: upload an input file, run the job on Sherlock, and download what it
+produced. This tier answers "can I build a small site to work with my research
+data?"
 
-The site itself is deliberately boring — one HTML file, no framework, no build
-step. The part worth learning is the plumbing that gets a browser on your
-laptop talking to a server on a compute node.
-
-## The whole workflow
+Here the job sends a list of prompts to the Ollama model from Tier 2 and saves
+the answers. The page and the job don't care what the job does, so the same
+setup works for your own analysis.
 
 ```
-   your laptop                    SSH tunnel            Sherlock compute node
-  ┌────────────┐                                       ┌───────────────────┐
-  │  browser   │ ── upload input ────────────────────▶ │  inputs/          │
-  │ localhost  │                                       │       │           │
-  │   :8080    │                                       │       ▼           │
-  │            │                                       │  predict.py ──────┼──▶ Tier 2
-  │            │                                       │       │           │    model
-  │            │ ◀── download output ───────────────── │  results/         │    server
-  └────────────┘                                       └───────────────────┘
+  your laptop               SSH tunnel             Sherlock
+ ┌──────────────┐                          ┌───────────────────────────┐
+ │   browser    │ ── upload prompts ─────▶ │ web server     inputs/    │
+ │ localhost    │                          │                   │       │
+ │   :8080      │                          │ predict.py ◀──────┘       │
+ │              │                          │     │  ──▶ Ollama (Tier 2)│
+ │              │ ◀── download results ─── │ results/ ◀┘               │
+ └──────────────┘                          └───────────────────────────┘
 ```
-
-Three steps, three files:
-
-| Step | What runs | Where |
-|------|-----------|-------|
-| 1. Serve the page + API | `server.py` (`sbatch submit_server.sh`) | long-running job |
-| 2. Produce the output | `predict.py` (`sbatch submit_job.sh`) | short job |
-| 3. View / transfer | your browser, through the tunnel | your laptop |
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `server.py` | FastAPI app — serves `static/index.html` *and* the JSON/file API |
-| `static/index.html` | The entire GUI. Vanilla JS, no dependencies |
-| `predict.py` | Compute step — reads `inputs/`, calls the Tier 2 model server, writes `results/` |
-| `submit_server.sh` | sbatch script for the long-running web server |
-| `submit_job.sh` | sbatch script for the compute step |
-| `results/` | What the page offers for download (ships with a sample run) |
-| `inputs/` | Where browser uploads land |
-| `requirements.txt` | FastAPI, uvicorn, python-multipart, requests |
+| File | What it is |
+|------|------------|
+| `server.py` | The web server. Serves the page and the files behind it |
+| `static/index.html` | The whole page: plain HTML and a little JavaScript |
+| `predict.py` | The job: reads `inputs/`, asks the model, writes `results/` |
+| `submit_server.sh` | Starts the web server |
+| `submit_job.sh` | Runs the job |
+| `inputs/` | Where uploads go |
+| `results/` | What the page offers for download (starts with a sample) |
 
-## Setup
+## 1. Start the model (session 1)
 
-```bash
-module load python/3.12.1
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# SLURM needs this to exist before you submit — --output is resolved at
-# submit time, and logs/ is gitignored so a fresh clone won't have it.
-mkdir -p logs
-```
-
----
-
-## The plumbing, in detail
-
-### 1. The server picks a port and writes down where it landed
-
-Servers on HPC can't bind a fixed hostname — SLURM decides which node you get.
-And a hardcoded port collides with whoever else is on that node. So `server.py`
-binds an **ephemeral** port and writes `<node>:<port>` to a known file:
+The job needs a model to talk to. Start Ollama as in Tier 2:
 
 ```bash
-$ cat $SCRATCH/hpc_workshop_gui.txt
-sh03-01n52:41235
+sh_dev -g 1 -m 8000
+ml ollama
+cd ~/hpc-server-workshop/02-model-server
+bash submit_ollama.sh
 ```
 
-That `<node>:<port>` format is the same one the [Sherlock Ollama
-docs][ollama] use for `~/.ollama_server`, and for the same reason: you can pull
-both halves back out with shell parameter expansion instead of copying a port
-out of a log file by hand.
+Note the machine name in this session's prompt; you'll need it in step 4.
+Leave it running.
 
-### 2. You forward a local port to it
+## 2. Start the web server (session 2)
 
-This is the step that trips everyone up. Two forms work, and **the tunnel
-target must agree with what the server bound to**:
-
-| Server bound to | Tunnel from your laptop | Notes |
-|---|---|---|
-| `127.0.0.1` (default here) | `ssh -NfL 8080:localhost:PORT NODE` | Encrypted end to end. Needs an active job on `NODE` |
-| `0.0.0.0` | `ssh -NfL 8080:NODE:PORT login.sherlock.stanford.edu` | Last hop is cleartext on the internal network |
-
-The default is the first form. Copy-paste version:
+In a second Sherlock terminal:
 
 ```bash
-ADDR=$(cat $SCRATCH/hpc_workshop_gui.txt)      # e.g. sh03-01n52:41235
-ssh -NfL 8080:localhost:${ADDR#*:} ${ADDR%:*}
+sh_dev
+cd ~/hpc-server-workshop/04-web-gui
+bash submit_server.sh
 ```
 
-`${ADDR#*:}` is the port, `${ADDR%:*}` is the node. `-N` means "no remote
-command", `-f` backgrounds it. To close the tunnel later:
-`pkill -f "8080:localhost"`.
+That's two sessions, the most `dev` allows at once. When it's ready it prints
+the tunnel command, for example:
 
-Why this form by default: SSH terminates the forward on the compute node's own
-`localhost`, so the server never has to listen on a network-visible address.
-It works because Sherlock lets you SSH to a compute node **where you have a
-running job** — and here the server job *is* yours. On a node where you don't,
-you'll get `Access denied by pam_slurm_adopt: you have no active jobs on this
-node`.
+```
+Web server on sh04-18n32.int:39831
+...
+On your laptop, open the tunnel (leave it running):
+  ssh -N -L 8080:sh04-18n32.int:39831 login.sherlock.stanford.edu
+then open http://localhost:8080 and paste your token into the page.
+```
 
-Use the login-node form if you can't SSH to the node. One tradeoff to know:
-with `-L 8080:NODE:8080 login`, SSH only encrypts as far as the login node; the
-login→compute hop crosses the internal network in the clear. Adding a jump host
-closes that gap:
+## 3. Open the page (on your laptop)
+
+Copy the `ssh -N -L ...` line into a terminal **on your laptop** and sign in
+with your SUNet password and Duo. Leave it running, as in Tier 1.
+
+Open **http://localhost:8080**. The page says "paste your token above and press
+Save". Show your token in a Sherlock terminal with `cat ~/.hpc_workshop/token`,
+paste it into the Token box and press **Save**. The page now shows
+"connected", lists the sample results, and lists `inputs/`.
+
+The token works the same way as in the other tiers: the server refuses
+everything except the page itself without it. Pressing Save stores it in your
+browser as a **cookie**, a small value the browser sends back to this site with
+every request. That's what lets the plain "download" links work too.
+
+Now make a file on your laptop called `prompts.txt` with one question per line,
+for example:
+
+```
+What is a compute node, in one sentence?
+Why write job output to scratch storage?
+```
+
+and upload it with **Choose file** and **Upload**.
+
+## 4. Run the job (a terminal on the model's machine)
+
+Ollama only accepts connections from its own machine, so the job has to run
+there. Open a third Sherlock terminal, log in to session 1's machine, and run
+the job on your upload:
 
 ```bash
-ssh -J login.sherlock.stanford.edu -L 8080:localhost:PORT NODE
+ssh <session 1 machine>
+cd ~/hpc-server-workshop/04-web-gui
+bash submit_job.sh prompts.txt
 ```
 
-### 3. You open `http://localhost:8080`
+```
+Input: prompts.txt (2 prompts)
+  [1/2] 'What is a compute node, in one sentence?' -> 242 chars
+  [2/2] 'Why write job output to scratch storage?' -> 291 chars
 
-Not the node's hostname — `localhost`. The tunnel makes your laptop's port 8080
-*be* the server's port.
-
-> **The classic failure.** `ssh -L 8050:localhost:8050 login.sherlock` then
-> `channel 3: open failed: connect failed: Connection refused`. That forwards to
-> the **login node's** localhost, where nothing is listening — the server is on
-> a compute node. This is the single most common version of this mistake — and
-> note the second half of the trap: fixing the tunnel target isn't enough if the
-> server is bound to loopback on a node you're forwarding *through*. The bind
-> address and the tunnel target have to agree.
-
-### Why the page and the API come from one server
-
-`server.py` serves `static/index.html` at `/` and the API at `/api/*`. So the
-browser's origin and every `fetch()` target are both
-`http://localhost:8080` — **same origin**, which means no CORS headers, no
-preflight, no second web server, no frontend build.
-
-If you instead open `index.html` from your laptop's filesystem and point it at
-the tunnel, the origin is `file://` and every request is cross-origin. That's
-the point at which people start adding `CORSMiddleware` and wildcard origins to
-an unauthenticated server. Serving both from one app avoids the whole problem.
-
-In `static/index.html` this is why every path is relative:
-
-```js
-const files = await (await fetch("/api/results")).json();
+Wrote prompts_20261028-081653.jsonl and prompts_20261028-081653.csv to .../04-web-gui/results
 ```
 
----
+In testing, two prompts took about 10 seconds. If you run it from the wrong
+machine, it tells you which machine to `ssh` to.
 
-## Run it
+## 5. Download the results
 
-```bash
-# 1. Start the web server (long-running)
-sbatch submit_server.sh
-tail -f logs/server_<jobid>.out     # prints the exact ssh command to use
+Press **Refresh** on the page. The new `.csv` and `.jsonl` files are at the top;
+click **download** to save one to your laptop. The `.csv` opens in a
+spreadsheet program: one row per prompt, with the model's answer next to it.
 
-# 2. Open the tunnel from your laptop, then browse to localhost:8080
-ADDR=$(cat $SCRATCH/hpc_workshop_gui.txt)
-ssh -NfL 8080:localhost:${ADDR#*:} ${ADDR%:*}
+## 6. Stop
 
-# 3. Upload a prompts file through the page (one prompt per line)
+Ctrl-C in each session's terminal, then `exit` both sessions, and Ctrl-C the
+tunnel on your laptop.
 
-# 4. Start the Tier 2 model server, then run the compute step
-cd ../02-model-server && sbatch submit_server.sh && cd -
-sbatch submit_job.sh
+## How it fits together
 
-# 5. Refresh the page — the new .csv and .jsonl are listed for download
-```
-
-Locally, without SLURM:
-
-```bash
-python server.py            # prints its port; open that URL directly
-python predict.py           # needs the Tier 2 server running
-```
-
-## API endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Status, node, and port |
-| `GET /api/results` | List downloadable outputs, newest first |
-| `GET /api/results/{name}` | Download one output file |
-| `GET /api/inputs` | List uploaded inputs |
-| `POST /api/inputs` | Upload a file (multipart form field `file`) |
-| `GET /` | The page itself |
+- **One server for the page and the data.** `server.py` sends the page itself
+  at `/` and the data behind it at `/api/...`. Because both come from the same
+  address, the browser treats them as one site, and there's nothing extra to
+  set up.
+- **The job knows nothing about the web.** `predict.py` only reads `inputs/` and
+  writes `results/`; the web server only lists and moves files in those folders.
+  Your own existing script can take `predict.py`'s place unchanged.
+- **Uploads can't escape `inputs/`.** `server.py` strips folder names from
+  uploaded file names, so a name like `../../.ssh/authorized_keys` can't write
+  anywhere else.
 
 ## Security
 
-These servers have **no authentication** — anyone who can reach the port can
-call every endpoint, including the upload. That's tolerable only because the
-SSH tunnel is doing the access control for you: reaching the port at all
-requires your SUNet ID, 2FA, and an SSH session.
+- **Keep the token.** Without it, anyone on Sherlock could reach this server,
+  read your results and upload files. With it, only people who can read your
+  token file can. For a lab, share the token through a group-readable file, as
+  described in Tier 1.
+- **Don't try to put this on the public internet.** The only way in from
+  outside is an SSH tunnel with your SUNet ID and Duo, and that's how it should
+  stay. A service that many people use over a long time needs a proper server,
+  and that's a conversation with SRCC.
 
-So:
+## Running it for real
 
-- **Keep `BIND_HOST=127.0.0.1`.** On `0.0.0.0` every user on the cluster
-  network can reach an unauthenticated file-upload endpoint.
-- **Don't try to expose this publicly.** Research clusters are not web hosting
-  platforms; the supported way in is an SSH tunnel. Running a plain-HTTP app on
-  a compute node and opening it up is the kind of thing that attracts a
-  security finding, so don't. If you need a genuinely shared service, talk to
-  SRCC rather than widening a bind address.
-- **`safe_name()` in `server.py` is load-bearing.** Without it, an upload named
-  `../../../.ssh/authorized_keys` would write outside `inputs/`.
+Both scripts also work as batch jobs (`mkdir -p logs`, then `sbatch
+submit_server.sh` and `sbatch submit_job.sh`). A batch job lands on whatever
+machine Slurm picks, so it can't reach an Ollama that only accepts connections
+from its own machine. For batch jobs, use the transformers server from Tier 2
+instead, which works from any machine with your token: in `submit_job.sh`,
+switch the `MODEL_API` and `MODEL_ADDR_FILE` lines to the commented-out
+`generate` ones.
 
-For a genuinely shared, authenticated service you want a persistent host with
-nginx, TLS, and real tokens — not an sbatch job on a compute node. That's a
-conversation with SRCC, not a change to these scripts.
+## Using your own results
 
-## Adapting this
-
-Point `RESULTS_DIR` at a directory your real pipeline already writes to and the
-page immediately lists those files — `server.py` needs no changes. `predict.py`
-is the template for the compute step: it only reads `inputs/` and writes
-`results/`, so it knows nothing about the web layer. Your existing batch script
-can take its place as-is.
-
-To show a plot or a table of numbers rather than a file list, add an endpoint
-that returns parsed JSON and render it in `index.html`.
-
-[ollama]: https://www.sherlock.stanford.edu/docs/software/using/ollama/
+Point `RESULTS_DIR` in `submit_server.sh` at the folder your pipeline already
+writes to, and the page lists those files without any changes to `server.py`.
+To show a chart or a table instead of a file list, add an address to
+`server.py` that returns the numbers, and draw them in `index.html`.

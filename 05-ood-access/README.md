@@ -1,4 +1,4 @@
-# Tier 5 — Open OnDemand access (no tunnel)
+# Tier 5: Open OnDemand (no tunnel)
 
 Tier 4 reaches a compute-node server by forwarding a port to your laptop.
 [Open OnDemand][ood] removes that step: an OOD session *already runs on a
@@ -34,31 +34,28 @@ See the [Sherlock OnDemand docs][ood_docs] for the full list and screenshots.
 ## Option A — Query your server from a notebook
 
 Start an **Interactive Apps > Jupyter Notebook** session, then read the
-discovery file your server wrote and call it directly. The notebook is on a
-compute node, so the node hostname resolves and no tunnel is involved:
+address file your server wrote and call it directly. The notebook runs on a
+compute node, so it can reach your server with no tunnel. Send your token, as
+every client does:
 
 ```python
+import os
 from pathlib import Path
 import requests
 
-# Tier 4 writes "<node>:<port>"; Tier 1/2 write "http://<host>:<port>"
-addr = Path("/scratch/users/<SUNET>/hpc_workshop_gui.txt").read_text().strip()
-base_url = addr if addr.startswith("http") else f"http://{addr}"
+addr = Path(os.path.expandvars("$SCRATCH/hpc_workshop_gui.txt")).read_text().strip()
+headers = {"x-token": Path("~/.hpc_workshop/token").expanduser().read_text().strip()}
 
-print(requests.get(f"{base_url}/health").json())
+print(requests.get(f"http://{addr}/health", headers=headers).json())
 
-# List and fetch results
-for f in requests.get(f"{base_url}/api/results").json():
+# List the results
+for f in requests.get(f"http://{addr}/api/results", headers=headers).json():
     print(f["name"], f["size_bytes"])
 ```
 
-Run `echo $SCRATCH` in a terminal to get your actual path.
-
-One caveat: if your Tier 4 server is bound to `127.0.0.1` (the default), the
-notebook can only reach it when the notebook happens to be on the *same* node.
-To query it from a different node, start that server with `BIND_HOST=0.0.0.0`
-— and read the security note in [Tier 4](../04-web-gui/README.md#security)
-first, because that exposes an unauthenticated server to the cluster network.
+The same works for the Tier 1 and Tier 2 servers (`hpc_workshop_server.txt`,
+`hpc_workshop_model.txt`). Ollama is the exception: it only accepts
+connections from its own machine.
 
 ## Option B — Reach your own page with the Interactive Desktop
 
@@ -67,14 +64,7 @@ desktop session, and go to `http://<node>:<port>` using the values from your
 discovery file. You are browsing from *inside* the cluster, so the node
 hostname resolves — the same URL that fails from your laptop can work here.
 
-**With one condition, the same one as Option A.** Your desktop session lands on
-whatever node SLURM gives it, which is almost never the node running your
-server. On the shipped default (`BIND_HOST=127.0.0.1`) the server only accepts
-connections from its own node, so this works *only* if the two happen to
-coincide. To reach it from any node, start the server with `BIND_HOST=0.0.0.0`
-— and read the [Tier 4 security note](../04-web-gui/README.md#security) first,
-because that opens an unauthenticated upload endpoint to the whole cluster
-network.
+Paste your token into the page as in Tier 4.
 
 ## Option C — Publish it as a custom interactive app
 

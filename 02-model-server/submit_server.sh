@@ -1,26 +1,37 @@
 #!/bin/bash
-#SBATCH --job-name=model-server
-#SBATCH --time=4:00:00
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
-#SBATCH --gpus=1
-#SBATCH --output=logs/server_%j.out
+#SBATCH --job-name=model-server      # name shown in the queue
+#SBATCH --time=1:00:00               # stop the job after this long (hours:minutes:seconds)
+#SBATCH --ntasks=1                   # run one copy of the program
+#SBATCH --cpus-per-task=4            # CPU cores for it
+#SBATCH --mem=16G                    # memory (RAM) for the job
+#SBATCH --gpus=1                     # number of GPUs
+#SBATCH --partition=gpu              # the machines that have GPUs
+#SBATCH --output=logs/server_%j.out  # save what the job prints here (%j becomes the job ID)
 
-# For a larger model, increase mem and cpus. For multi-GPU:
-#   #SBATCH --gpus=2
-#   Set tensor_parallel_size in the generation call accordingly.
+# server.py puts the model on one GPU, so asking for more GPUs here doesn't
+# help. A model too big for one GPU needs changes to server.py first.
 
+# Where the server writes its address, so other jobs can find it.
 export SERVER_ADDR_FILE="$SCRATCH/hpc_workshop_model.txt"
 
-# Cache HF model weights in $SCRATCH so they persist across jobs.
-# First run will download; subsequent runs load from cache.
+# Where Hugging Face keeps its files. $SCRATCH is your fast scratch space;
+# files there are deleted after 90 days unused.
 export HF_HOME="$SCRATCH/hf_cache"
 
-# Swap MODEL_NAME for a larger model when you have GPU resources.
+# For the workshop, the model is already downloaded to a shared, read-only
+# folder, so nobody has to download it. HF_HUB_OFFLINE=1 means "use what's
+# there, don't try to download or check for updates".
+# For your own work, delete these two lines; the model then downloads once
+# into $HF_HOME and loads from there after that.
+export HF_HUB_CACHE="/home/groups/sh_support/bcritt/server_workshop/hf_cache/hub"
+export HF_HUB_OFFLINE=1
+
+# Which model to serve. distilgpt2 is tiny, for trying out the steps.
 export MODEL_NAME="distilgpt2"
 
-module load python/3.12.1
-source venv/bin/activate
+module load python/3.12.1    # make Sherlock's Python 3.12 available
+# The workshop's shared Python packages. For your own project, make your own
+# environment (see the README) and activate that instead.
+source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 
 python server.py

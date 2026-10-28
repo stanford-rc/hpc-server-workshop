@@ -1,45 +1,92 @@
 """
 server.py — FastAPI data server (Tier 1).
 
-Loads a CSV of HPC job records and exposes REST endpoints to query them.
-Writes its address to SERVER_ADDR_FILE on startup so batch clients can find it.
+Loads a table of (made-up) cluster job records and answers questions about it
+over HTTP. On startup it picks a free port and writes "<machine>:<port>" to
+SERVER_ADDR_FILE, so a client can find it.
 
-Start manually:
-  python server.py
+Any machine on Sherlock can connect, so every request must include the token
+from TOKEN_FILE (a long random password). Who can use the server is decided by
+who can read that file: chmod 600 for just you, or a group-readable file in
+$GROUP_HOME for your lab.
 
-Via SLURM:
-  sbatch submit_server.sh
+Start it:
+  bash submit_server.sh      # inside an sh_dev session
+  sbatch submit_server.sh    # or as a batch job
 """
 
 import os
+import secrets
 import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pandas as pd
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 
 DATA_FILE = Path(__file__).parent / "data" / "jobs.csv"
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_server.txt"))
-PORT = int(os.environ.get("PORT", 8080))
+# 0.0.0.0 = accept connections from any machine on Sherlock. The token below
+# is what keeps everyone else out.
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
+
+
+def pick_port() -> int:
+    """Return $PORT if set, else a port nobody on this machine is using."""
+    override = os.environ.get("PORT")
+    if override:
+        return int(override)
+    with socket.socket() as probe:
+        probe.bind(("", 0))  # port 0 = let the system pick a free one
+        return probe.getsockname()[1]
+
+
+PORT = pick_port()
 
 df: pd.DataFrame = None
+
+if not TOKEN_FILE.exists():
+    raise SystemExit(
+        f"No token file at {TOKEN_FILE}. Make one first (see the README):\n"
+        f"  mkdir -p {TOKEN_FILE.parent}\n"
+        f"  python3 -c 'import secrets; print(secrets.token_urlsafe(32))' > {TOKEN_FILE}\n"
+        f"  chmod 600 {TOKEN_FILE}"
+    )
+TOKEN = TOKEN_FILE.read_text().strip()
+
+# Every request must carry the token in an "x-token" header.
+token_header = APIKeyHeader(name="x-token", auto_error=False)
+
+
+def require_token(given: str | None = Security(token_header)):
+    # compare_digest takes the same time however much of the token matches,
+    # so it can't be guessed one character at a time.
+    if not given or not secrets.compare_digest(given, TOKEN):
+        raise HTTPException(status_code=401, detail="Missing or wrong token")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global df
     df = pd.read_csv(DATA_FILE)
-    host = socket.getfqdn()
+    node = socket.gethostname()
     ADDR_FILE.parent.mkdir(parents=True, exist_ok=True)
-    ADDR_FILE.write_text(f"http://{host}:{PORT}")
-    print(f"Loaded {len(df)} job records.")
-    print(f"Server address written to {ADDR_FILE}")
+    ADDR_FILE.write_text(f"{node}:{PORT}")
+    # flush=True so the lines show up right away in a batch job's log file.
+    print(f"Loaded {len(df)} job records.", flush=True)
+    print(f"Listening on {BIND_HOST}:{PORT} on {node}", flush=True)
+    print(f"Address written to {ADDR_FILE}", flush=True)
     yield
 
 
-app = FastAPI(title="HPC Job Data Server", lifespan=lifespan)
+# dependencies=... applies the token check to every endpoint below. FastAPI's
+# own /docs page stays open; use its "Authorize" button to paste the token.
+app = FastAPI(
+    title="HPC Job Data Server", lifespan=lifespan, dependencies=[Depends(require_token)]
+)
 
 
 @app.get("/health")
@@ -81,7 +128,7 @@ def get_stats():
 
 
 def main():
-    uvicorn.run("server:app", host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host=BIND_HOST, port=PORT)
 
 
 if __name__ == "__main__":

@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <!--
-  index.html — the whole GUI. No framework, no build step, no CDN.
+  index.html: the whole page, plain HTML and JavaScript.
 
   Every fetch() below uses a relative path ("/api/..."). Because this page is
   served by the same FastAPI app that serves the API, "relative" resolves to
   http://localhost:<your tunnel port> — same origin, so no CORS involved.
 
-  Swap the table and the upload form for whatever your research actually needs;
-  the plumbing underneath does not change.
+  The server needs your token for everything except this page. The Token box
+  saves it as a cookie, which the browser sends with every request, including
+  the plain download links.
+
+  Swap the table and the upload form for whatever your research needs; the
+  connection steps underneath stay the same.
 -->
 <html lang="en">
 <head>
@@ -27,6 +31,12 @@
 </head>
 <body>
   <h1>HPC Job GUI</h1>
+  <form id="token-form">
+    <!-- Paste the contents of ~/.hpc_workshop/token. It's saved as a cookie for
+         this page only, which the browser then sends with every request. -->
+    <label>Token <input type="password" id="token" size="48" autocomplete="off"></label>
+    <button type="submit">Save</button>
+  </form>
   <p class="status" id="health">connecting…</p>
 
   <h2>Results <button onclick="loadResults()">Refresh</button></h2>
@@ -54,12 +64,37 @@ const fmtSize = (n) =>
 
 async function loadHealth() {
   const el = document.getElementById("health");
+  el.className = "status";
   try {
-    const h = await (await fetch("/health")).json();
-    el.textContent = `connected — node ${h.node}, port ${h.port}`;
+    const res = await fetch("/health");
+    if (res.status === 401) {
+      el.textContent = "paste your token above and press Save";
+      el.className = "status err";
+      return false;
+    }
+    const h = await res.json();
+    el.textContent = `connected: machine ${h.node}, port ${h.port}`;
+    return true;
   } catch (e) {
-    el.textContent = "cannot reach the server — is the SSH tunnel still up?";
+    el.textContent = "cannot reach the server. Is the SSH tunnel still running?";
     el.className = "status err";
+    return false;
+  }
+}
+
+document.getElementById("token-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const t = document.getElementById("token").value.trim();
+  // SameSite=Strict: only this page's own requests carry the cookie.
+  document.cookie = `x-token=${encodeURIComponent(t)}; path=/; SameSite=Strict`;
+  document.getElementById("token").value = "";
+  loadAll();
+});
+
+async function loadAll() {
+  if (await loadHealth()) {
+    loadResults();
+    loadInputs();
   }
 }
 
@@ -121,9 +156,7 @@ document.getElementById("upload-form").addEventListener("submit", async (ev) => 
   }
 });
 
-loadHealth();
-loadResults();
-loadInputs();
+loadAll();
 </script>
 </body>
 </html>

@@ -1,8 +1,10 @@
 """
 server.py — FastAPI model inference server (Tier 2).
 
-Loads a HuggingFace text-generation model and exposes a /generate endpoint.
-Writes its address to SERVER_ADDR_FILE on startup so batch clients can find it.
+Loads a Hugging Face text-generation model and answers prompts at /generate.
+On startup it picks a free port and writes "<machine>:<port>" to
+SERVER_ADDR_FILE so a client can find it. Every request must include the token
+from TOKEN_FILE, as in Tier 1.
 
 Default model: distilgpt2 (~300 MB, runs on CPU — good for testing).
 For real work: set MODEL_NAME to a larger model and request a GPU in sbatch.
@@ -21,18 +23,46 @@ Via SLURM:
 """
 
 import os
+import secrets
 import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from transformers import GenerationConfig, pipeline
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "distilgpt2")
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_model.txt"))
-PORT = int(os.environ.get("PORT", 8081))
+# 0.0.0.0 = accept connections from any machine on Sherlock; the token keeps
+# everyone else out.
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
+
+
+def pick_port() -> int:
+    """Return $PORT if set, else a port nobody on this machine is using."""
+    override = os.environ.get("PORT")
+    if override:
+        return int(override)
+    with socket.socket() as probe:
+        probe.bind(("", 0))  # port 0 = let the system pick a free one
+        return probe.getsockname()[1]
+
+
+PORT = pick_port()
+
+if not TOKEN_FILE.exists():
+    raise SystemExit(f"No token file at {TOKEN_FILE}. Make one first (see the Tier 1 README).")
+TOKEN = TOKEN_FILE.read_text().strip()
+token_header = APIKeyHeader(name="x-token", auto_error=False)
+
+
+def require_token(given: str | None = Security(token_header)):
+    if not given or not secrets.compare_digest(given, TOKEN):
+        raise HTTPException(status_code=401, detail="Missing or wrong token")
 
 generator = None
 
@@ -40,18 +70,18 @@ generator = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global generator
-    print(f"Loading model: {MODEL_NAME} ...")
+    print(f"Loading model: {MODEL_NAME} ...", flush=True)
     # device=0 uses the first GPU; device=-1 forces CPU.
     device = 0 if os.environ.get("CUDA_VISIBLE_DEVICES") else -1
     generator = pipeline("text-generation", model=MODEL_NAME, device=device)
-    host = socket.getfqdn()
+    node = socket.gethostname()
     ADDR_FILE.parent.mkdir(parents=True, exist_ok=True)
-    ADDR_FILE.write_text(f"http://{host}:{PORT}")
-    print(f"Model ready. Server address written to {ADDR_FILE}")
+    ADDR_FILE.write_text(f"{node}:{PORT}")
+    print(f"Model ready on {node}:{PORT}. Address written to {ADDR_FILE}", flush=True)
     yield
 
 
-app = FastAPI(title="HPC Model Server", lifespan=lifespan)
+app = FastAPI(title="HPC Model Server", lifespan=lifespan, dependencies=[Depends(require_token)])
 
 
 class GenerateRequest(BaseModel):
@@ -89,7 +119,7 @@ def generate(req: GenerateRequest):
 
 
 def main():
-    uvicorn.run("server:app", host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host=BIND_HOST, port=PORT)
 
 
 if __name__ == "__main__":

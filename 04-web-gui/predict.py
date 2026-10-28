@@ -13,22 +13,20 @@ JSONL and CSV. Nothing here is GUI-aware — it just reads and writes the two
 directories the server exposes, which is the point: your existing batch script
 becomes a web app without being rewritten.
 
-Either Tier 2 backend works. Pick with MODEL_API:
-  openai    Ollama's OpenAI-compatible /v1/chat/completions  (workshop path)
-  generate  the transformers server's own /generate          (default)
+Either Tier 2 model server works. Pick with MODEL_API:
+  openai    Ollama (workshop path). Ollama only accepts connections from its
+            own machine, so run this on that machine (ssh to it).
+  generate  the transformers server. Works from any machine; sends your token.
 
 Usage:
-  python predict.py                    # newest .txt in INPUTS_DIR
-  python predict.py prompts.txt        # a specific file in INPUTS_DIR
-
-Requires a Tier 2 server to be running:
-  cd ../02-model-server && sbatch submit_ollama.sh    # MODEL_API=openai
-  cd ../02-model-server && sbatch submit_server.sh    # MODEL_API=generate
+  bash submit_job.sh                   # newest .txt in INPUTS_DIR
+  bash submit_job.sh prompts.txt       # a specific file in INPUTS_DIR
 """
 
 import csv
 import json
 import os
+import socket
 import sys
 import time
 from pathlib import Path
@@ -46,6 +44,7 @@ MODEL_ADDR_FILE = Path(
     )
 )
 MAX_NEW_TOKENS = int(os.environ.get("MAX_NEW_TOKENS", 60))
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
 
 # Which Tier 2 backend to talk to. Explicit rather than probed: auto-detection
 # would add a failure mode that's awkward to debug from a job log.
@@ -55,20 +54,32 @@ MODEL = os.environ.get("MODEL", "llama3.2:1b")
 
 
 def model_base_url() -> str:
-    """Read the model server's address from its discovery file.
-
-    Tier 2 writes "http://<host>:<port>"; Tier 4 writes "<host>:<port>".
-    Accept either so this works no matter which file you point it at.
-    """
+    """Read "<machine>:<port>" from the model server's address file."""
     if not MODEL_ADDR_FILE.exists():
         sys.exit(
             f"Model server address file not found: {MODEL_ADDR_FILE}\n"
-            "Start a Tier 2 server first:\n"
-            "  cd ../02-model-server && sbatch submit_ollama.sh   # MODEL_API=openai\n"
-            "  cd ../02-model-server && sbatch submit_server.sh   # MODEL_API=generate"
+            "Start a Tier 2 model server first (see the Tier 4 README)."
         )
-    addr = MODEL_ADDR_FILE.read_text().strip()
-    return addr if addr.startswith("http") else f"http://{addr}"
+    node, port = MODEL_ADDR_FILE.read_text().strip().removeprefix("http://").rsplit(":", 1)
+    if MODEL_API == "openai":
+        # Ollama has no password, so it only accepts connections from its own
+        # machine: connect to "localhost", and only from that machine.
+        here = socket.gethostname()
+        if node.split(".")[0] != here.split(".")[0]:
+            sys.exit(
+                f"Ollama is running on {node}, but this terminal is on {here}.\n"
+                f"From a login node, run:  ssh {node}\n"
+                "then run this again there."
+            )
+        return f"http://localhost:{port}"
+    return f"http://{node}:{port}"
+
+
+def model_headers() -> dict:
+    """The transformers server needs your token; Ollama ignores headers."""
+    if MODEL_API == "generate":
+        return {"x-token": TOKEN_FILE.read_text().strip()}
+    return {}
 
 
 def complete(base_url: str, prompt: str) -> tuple[str, str]:
@@ -97,6 +108,7 @@ def complete(base_url: str, prompt: str) -> tuple[str, str]:
 
     r = requests.post(
         f"{base_url}/generate",
+        headers=model_headers(),
         json={"prompt": prompt, "max_new_tokens": MAX_NEW_TOKENS},
         timeout=180,
     )

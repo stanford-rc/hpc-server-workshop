@@ -25,16 +25,19 @@ from pathlib import Path
 import requests
 
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_model.txt"))
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
 MAX_WAIT = 300  # model load can take a few minutes
 
 
-def wait_for_server(base_url: str, timeout: int = MAX_WAIT) -> bool:
+def wait_for_server(base_url: str, headers: dict, timeout: int = MAX_WAIT) -> bool:
     print(f"Waiting for model server at {base_url} ...")
     print("(Model load may take 30–120 seconds.)")
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            r = requests.get(f"{base_url}/health", timeout=5)
+            r = requests.get(f"{base_url}/health", headers=headers, timeout=5)
+            if r.status_code == 401:
+                sys.exit(f"The server refused the token in {TOKEN_FILE}.")
             if r.status_code == 200:
                 info = r.json()
                 print(f"Server ready. Model: {info['model']}")
@@ -45,9 +48,10 @@ def wait_for_server(base_url: str, timeout: int = MAX_WAIT) -> bool:
     return False
 
 
-def generate(base_url: str, prompt: str, max_new_tokens: int = 100) -> str:
+def generate(base_url: str, headers: dict, prompt: str, max_new_tokens: int = 100) -> str:
     r = requests.post(
         f"{base_url}/generate",
+        headers=headers,
         json={"prompt": prompt, "max_new_tokens": max_new_tokens},
         timeout=120,
     )
@@ -58,13 +62,17 @@ def generate(base_url: str, prompt: str, max_new_tokens: int = 100) -> str:
 def main():
     if not ADDR_FILE.exists():
         print(f"Address file not found: {ADDR_FILE}")
-        print("Start the server first:  sbatch submit_server.sh")
+        print("Start the server first:  bash submit_server.sh")
         sys.exit(1)
+    if not TOKEN_FILE.exists():
+        sys.exit(f"No token file at {TOKEN_FILE}. It's made in Tier 1 setup.")
 
-    base_url = ADDR_FILE.read_text().strip()
+    base_url = f"http://{ADDR_FILE.read_text().strip()}"
+    headers = {"x-token": TOKEN_FILE.read_text().strip()}  # sent with every request
 
-    if not wait_for_server(base_url):
-        print("Server did not respond within timeout.")
+    if not wait_for_server(base_url, headers):
+        print("Server did not respond. If it has stopped, the address file is left over:")
+        print(f"start the server again, or delete {ADDR_FILE}.")
         sys.exit(1)
 
     prompts = [
@@ -75,7 +83,7 @@ def main():
 
     for prompt in prompts:
         print(f"\nPrompt: {prompt!r}")
-        result = generate(base_url, prompt, max_new_tokens=60)
+        result = generate(base_url, headers, prompt, max_new_tokens=60)
         continuation = result[len(prompt):]
         print(f"Output: {continuation.strip()}")
 

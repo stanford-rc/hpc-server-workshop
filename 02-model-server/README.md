@@ -1,178 +1,162 @@
-# Tier 2 — Model Server
+# Tier 2: A model server
 
-Serve a language model on a GPU node so other jobs, notebooks, or a web page
-can call it. Builds on the Tier 1 pattern: the server writes its address to a
-file, clients read that file to find it.
+Tier 1's server held a table. This one holds a **language model**, the kind of
+program behind chatbots. Models are a good reason to run a server: loading one
+takes time and GPU memory, so you load it once and send it many prompts.
 
-There are two ways to do this, and both are here.
+There are two ways to do it, and you'll try both:
 
-## Which path?
-
-| | **A. Ollama** | **B. Transformers** |
+| | **A. Ollama** | **B. Your own server (transformers)** |
 |---|---|---|
-| Setup | `ml ollama` | `pip install` torch + transformers |
-| You write | nothing — Ollama *is* the server | the server (`server.py`) |
-| Weights | Ollama's library, many cached on Sherlock | anything on the HuggingFace Hub |
-| GPU | works on an instant MIG slice | request a full GPU |
-| API | OpenAI-compatible `/v1` | your own `/generate` |
+| What it is | A ready-made model server, installed on Sherlock as a module | A small server you write, using the Hugging Face `transformers` library |
+| You write | nothing | `server.py` (provided) |
+| Models | Ollama's collection; Sherlock keeps copies of many | almost any model on the Hugging Face Hub |
+| Who can reach it | only programs on the same machine | any machine on Sherlock, with your token |
 
-**Path A is the fast one** — no torch install, no model download if the tag is
-cached, and no queue wait. Start here.
+Ollama is the quick start. Your own server is what you'd use for a specific
+model, for example one trained for your field.
 
-**Path B is what you want for a specific model.** The real reason to use
-transformers is the Hub's pre-tuned, domain- and task-specific models: a
-model already fine-tuned for your field or your task, which Ollama's library
-doesn't carry. Also gated models, quantization you control, and reproducible
-batch inference.
+## Files
 
----
+| File | What it is |
+|------|------------|
+| `submit_ollama.sh` | A: starts Ollama and writes its address |
+| `ollama_client.py` | A: sends a few questions to Ollama |
+| `server.py` | B: loads a model and answers prompts at `/generate` |
+| `submit_server.sh` | B: starts `server.py` |
+| `client.py`, `submit_client.sh` | B: sends a few prompts to `server.py` |
 
-## Path A — Ollama
+## 1. A session with a GPU
+
+Language models run much faster on a **GPU**. Sherlock's `dev` machines have
+GPU **slices**: one physical GPU split into several smaller ones, each with
+6 GB of its own memory. A slice is plenty for the small models used here, and
+usually starts right away:
 
 ```bash
-# Instant MIG slice from the dev partition — no queue wait
-sh_dev -g 1 -m 16GB -t 2:00:00
-ml ollama
-bash submit_ollama.sh          # starts ollama, pulls the model, writes the address
+sh_dev -g 1 -m 8000
 ```
 
-In a second shell on the same node:
+`-g 1` asks for one GPU slice and `-m 8000` for 8,000 MB (about 8 GB) of memory,
+since the model and its libraries need more than the default 4 GB.
+
+## 2. A: Ollama
+
+In the session:
 
 ```bash
+ml ollama
+cd ~/hpc-server-workshop/02-model-server
+bash submit_ollama.sh
+```
+
+`ml` is short for `module load`: it makes Ollama available in this terminal.
+The script starts Ollama on a free port, fetches the model (`llama3.2:1b`, a
+small one) and writes Ollama's address to `$SCRATCH/hpc_workshop_ollama.txt`.
+In testing it was ready in about 40 seconds. Leave it running.
+
+Ollama doesn't have a password or token, so it only accepts connections from
+the machine it runs on. To talk to it, open a **second terminal**, log in to
+the session's machine (the name in your session's prompt), and run the client:
+
+```bash
+ssh <machine>
+cd ~/hpc-server-workshop/02-model-server
+ml python/3.12.1
+source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 python ollama_client.py
 ```
 
-`submit_ollama.sh` also works as a batch job (`sbatch submit_ollama.sh`) when
-you need the server to outlive your terminal.
+The second and third commands make the workshop's Python packages available,
+the same two lines every script in this workshop starts with. After about 15
+seconds you get two answers. Read them closely: a model this small often
+sounds sure of itself and is wrong. In testing it explained "SLURM" with a
+made-up name. That's normal for small models, and a good reason to check what
+a model tells you.
 
-Pick the model with `MODEL=...`. Sherlock caches many popular tags on-prem, so
-a cached pull is fast — but there's no documented way to *query* that cache, so
-the only confirmation is `ollama pull` printing `found in on-prem cache`
-instead of downloading. **Test your tag before you rely on it.**
+To try another model, stop Ollama with Ctrl-C in the first terminal and start
+it again with `MODEL=<name> bash submit_ollama.sh`, then run the client with the
+same `MODEL=<name>` in front. Model names are listed at ollama.com/library; keep
+to small ones on a GPU slice. If Sherlock already has a copy, fetching it is
+quick.
 
-The address lands in both `$SCRATCH/hpc_workshop_ollama.txt` (the workshop's
-discovery convention) and `~/.ollama_server` (what the Sherlock docs and CLI
-coding agents expect).
+Stop Ollama with **Ctrl-C** before part B, so the two don't compete for the
+slice's memory.
 
-> Ollama binds loopback here, unlike the Sherlock docs' `0.0.0.0`. An Ollama
-> server on `0.0.0.0` lets any user on the cluster network consume your GPU
-> allocation and call `/api/pull` and `/api/delete`. Widen it only when you
-> need cross-node access: `OLLAMA_BIND=0.0.0.0 sbatch submit_ollama.sh`.
+## 3. B: your own model server
 
----
-
-## Path B — Transformers
-
-| File | Purpose |
-|------|---------|
-| `server.py` | FastAPI app — loads HF model, exposes `/generate` and `/health` |
-| `client.py` | Python client — sends prompts, prints completions |
-| `submit_server.sh` | sbatch script (GPU node, 4h walltime) |
-| `submit_client.sh` | sbatch script for the client job |
-| `submit_ollama.sh` | Path A: starts Ollama and writes its endpoint |
-| `ollama_client.py` | Path A: queries Ollama's `/v1` endpoint |
-
-## Setup
+In the first terminal (the session):
 
 ```bash
-module load python/3.12.1
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+bash submit_server.sh
 ```
 
-On Sherlock, use the `pytorch` module instead of installing torch from PyPI:
+This starts `server.py`, which loads `distilgpt2`, a tiny text model, onto the
+GPU. For the workshop the model is already downloaded to a shared folder, so
+nothing has to be fetched. Loading takes about a minute. When it prints
+`Model ready on <machine>:<port>`, run the client in the second terminal:
+
 ```bash
-module load pytorch/2.3  # check available versions: module spider pytorch
-pip install fastapi uvicorn transformers accelerate requests
+bash submit_client.sh
 ```
 
-## Run on Sherlock
+Each prompt comes back with a continuation. `distilgpt2` is old and tiny, so
+the text is mostly nonsense. What matters here is the steps, not the model.
+
+Like Tier 1, this server can be reached from any machine on Sherlock, so it
+uses your token. Here is the same request by hand:
 
 ```bash
-# Start the GPU server job
+curl -s -H "x-token: $(cat ~/.hpc_workshop/token)" -H "Content-Type: application/json" -d '{"prompt": "The cluster is", "max_new_tokens": 30}' "http://$(cat $SCRATCH/hpc_workshop_model.txt)/generate"
+```
+
+Stop it with Ctrl-C, and `exit` the session when you're done.
+
+### Choosing a model
+
+`distilgpt2` is only there to test the steps. For real work, set `MODEL_NAME`
+in `submit_server.sh` to any text-generation model on the Hugging Face Hub. A
+few things to know:
+
+- **Size.** A GPU slice has 6 GB of memory, enough for models up to about a
+  billion parameters. `server.py` uses one GPU, so bigger models need a full GPU
+  in a batch job (see "Running it for real") and possibly changes to `server.py`.
+- **Downloads.** Outside the workshop, remove the `HF_HUB_CACHE` and
+  `HF_HUB_OFFLINE` lines from `submit_server.sh`. The model then downloads once
+  into `$SCRATCH/hf_cache` and loads from there after that. (Files in `$SCRATCH`
+  are deleted after 90 days unused.)
+- **Gated models.** Some models, such as Meta's Llama, need you to accept a
+  license on the Hugging Face website and log in with a Hugging Face token
+  before they'll download.
+
+**Models for your field.** The Hub has many models already trained for a
+subject or a task: scientific text (`allenai/scibert_scivocab_uncased`),
+biomedical papers (`dmis-lab/biobert-base-cased-v1.2`), protein sequences
+(`facebook/esm2_t33_650M_UR50D`). Ollama doesn't carry these, which is the
+main reason to write your own server. Many of them don't generate text; they
+classify it, fill in missing words or turn it into numbers. For those, change
+`pipeline("text-generation", ...)` in `server.py` to the task you need
+(`fill-mask`, `feature-extraction`, `text-classification`,
+`token-classification`) and adjust what `/generate` returns. The session,
+address file and token don't change.
+
+## Running it for real
+
+For a model server that runs longer than a session, submit it as a batch job.
+`submit_server.sh` and `submit_ollama.sh` already ask for a full GPU on
+Sherlock's `gpu` machines in their `#SBATCH` lines:
+
+```bash
+mkdir -p logs
 sbatch submit_server.sh
-
-# Watch model load (takes 30–120 seconds)
-tail -f logs/server_<jobid>.out
-
-# Run the client once the server is ready
-sbatch submit_client.sh
-
-# Or interactively
-export SERVER_ADDR_FILE="$SCRATCH/hpc_workshop_model.txt"
-python client.py
 ```
 
-## Run locally (CPU, small model only)
+GPU slices are only available in `sh_dev` sessions, so a batch job gets a whole
+GPU and may wait in the queue first.
 
-```bash
-python server.py &    # loads distilgpt2, writes /tmp/hpc_workshop_model.txt
-python client.py
-```
+## Your own Python packages
 
-## API endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Status and model name |
-| `POST /generate` | Generate text; body: `{"prompt": "...", "max_new_tokens": 100}` |
-
-## Choosing a model
-
-The default (`distilgpt2`) is tiny and runs on CPU — good for testing the pattern.
-For real research, swap `MODEL_NAME` in `submit_server.sh`:
-
-| Model | GPU mem | Use case |
-|-------|---------|----------|
-| `distilgpt2` | CPU only | Workshop demo |
-| `meta-llama/Llama-3.2-1B` | ~4 GB | Small fast model |
-| `meta-llama/Llama-3.1-8B` | ~16 GB | Good general model |
-| `Qwen/Qwen2.5-32B-AWQ` | ~22 GB | Large model (2× L4 or 1× A100) |
-
-Request more GPU memory with `#SBATCH --mem=32G` and multiple GPUs with
-`#SBATCH --gpus=2`.
-
-### Domain- and task-specific models
-
-This is the real argument for Path B. The Hub carries models already tuned for
-a field or a task — scientific text (`allenai/scibert_scivocab_uncased`),
-biomedical literature (`dmis-lab/biobert-base-cased-v1.2`), protein sequences
-(`facebook/esm2_t33_650M_UR50D`) — none of which are in Ollama's library. A
-model that already knows your domain's vocabulary usually beats a larger
-general one, on a fraction of the GPU.
-
-**One thing to change beyond the model name.** Many of these are encoders, not
-text generators, so `pipeline("text-generation", ...)` in `server.py` is the
-wrong task for them. Swap it for the task you actually want —
-`fill-mask`, `feature-extraction` (embeddings), `text-classification`,
-`token-classification` (NER) — and adjust the endpoint's return shape to match.
-The SLURM and discovery patterns don't change at all.
-
-## HuggingFace cache
-
-Model weights download from HuggingFace Hub on first use. Set `HF_HOME` to a
-persistent location so you don't re-download on every job:
-
-```bash
-export HF_HOME="$OAK/models/hf_cache"   # persists long-term
-# or
-export HF_HOME="$SCRATCH/hf_cache"      # faster I/O, but files deleted after 90 days
-```
-
-The `submit_server.sh` sets `HF_HOME=$SCRATCH/hf_cache` by default.
-
-## OOD notebook access
-
-```python
-from pathlib import Path
-import requests
-
-base_url = Path("/scratch/users/<SUNET>/hpc_workshop_model.txt").read_text().strip()
-
-r = requests.post(f"{base_url}/generate", json={
-    "prompt": "The Sherlock cluster is",
-    "max_new_tokens": 80,
-})
-print(r.json()["generated_text"])
-```
+Part B's packages (`torch` especially) take about 5 GB. To make your own set
+for your projects, see "Making your own environment" in the
+[top-level README](../README.md#making-your-own-environment), and keep it in
+`$GROUP_HOME`, not `$HOME`.

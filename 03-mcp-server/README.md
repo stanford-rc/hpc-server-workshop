@@ -1,170 +1,147 @@
-# Tier 3 — MCP Server
+# Tier 3: An MCP server for Claude
 
-**Model Context Protocol (MCP)** is a standard interface for giving AI
-assistants structured access to tools and data. Where tiers 1–2 expose HTTP
-endpoints that you call explicitly, an MCP server lets the assistant *decide*
-which tools to call and in what order, based on a natural-language question.
+In Tiers 1 and 2 you wrote the questions: the client asked for `/stats` or sent
+a prompt. Here an AI assistant decides what to ask.
 
-You run the tools on Sherlock. Claude on your laptop runs the model. Ask
-"how do I stop hitting my quota?" and Claude picks `search_docs`, then
-`read_doc`, and answers from what it finds.
+**MCP** (Model Context Protocol) is a standard way to give an AI assistant like
+Claude a set of **tools** it can use. This server offers three tools for a
+folder of Sherlock documentation (`docs/`, three short sample files):
 
-## How this differs from tiers 1–2
+| Tool | What it does |
+|------|--------------|
+| `list_docs` | Lists the documents |
+| `search_docs` | Finds which documents mention a word, with the matching lines |
+| `read_doc` | Returns one document in full |
 
-| | Tier 1–2 (HTTP) | Tier 3 (MCP) |
-|---|---|---|
-| Client | Python script you write | Claude Desktop or Claude Code |
-| Invocation | You call the endpoint | The model decides what to call |
-| Interface | URLs and JSON you designed | Tools it discovers at connect time |
-| Use case | Batch jobs, notebooks | Conversational, exploratory |
+You ask Claude a question in plain English. Claude sees the tools, decides to
+search for a word, reads the document it found, and answers from it.
 
-## What runs where
+**What runs where.** The server runs on Sherlock, in your session. It only
+reads files and searches text, so no GPU is needed. You'll run Claude Code on
+Sherlock too, from Sherlock's `claude-code` module, signed in with your
+Stanford account. The AI model itself runs at Anthropic, so your questions and
+any document text the tools return are sent there. Only point this at material
+you're allowed to use with Stanford's Claude.
 
-```
-  your laptop                  SSH tunnel          Sherlock compute node
- ┌──────────────────┐                             ┌────────────────────┐
- │ Claude Desktop   │                             │  mcp_server.py     │
- │ or Claude Code   │ ──── tools/list ──────────▶ │   list_docs        │
- │                  │ ──── tools/call ──────────▶ │   read_doc         │
- │ (model runs      │ ◀─── results ────────────── │   search_docs      │
- │  Anthropic-side) │                             │      │             │
- └──────────────────┘                             │   docs/            │
-                                                  └────────────────────┘
-                                                       no GPU needed
-```
+## 1. Start the server
 
-**No GPU, and no model on the cluster.** This process reads files and matches
-strings. That's the point of MCP: the tools and the model are separate
-services, so the expensive half is somebody else's problem. The tradeoff is
-that your questions and the retrieved text go to Anthropic — if that's not
-acceptable, see [Keeping it all on Sherlock](#keeping-it-all-on-sherlock).
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `mcp_server.py` | MCP server over Streamable HTTP — `list_docs`, `read_doc`, `search_docs` |
-| `docs/` | The documentation the tools expose (three sample files) |
-| `submit_server.sh` | sbatch script (no GPU, 4h walltime) |
-| `requirements.txt` | `mcp>=2.0`, `uvicorn` |
-
-## Setup
+In a Sherlock terminal:
 
 ```bash
-module load python/3.12.1
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# SLURM needs this to exist before you submit — --output is resolved at
-# submit time, and logs/ is gitignored so a fresh clone won't have it.
-mkdir -p logs
+sh_dev
+cd ~/hpc-server-workshop/03-mcp-server
+bash submit_server.sh
 ```
 
-> MCP 2.x renamed `FastMCP` to `MCPServer`. `requirements.txt` pins `mcp>=2.0`
-> to match this code. The production server elsewhere in this repo was written
-> against 1.x and uses the old name.
+When it's ready it prints:
 
-## Run
+```
+MCP server on sh04-18n31.int:45893
+Docs: /home/users/<you>/hpc-server-workshop/03-mcp-server/docs (3 files)
+Address written to /scratch/users/<you>/hpc_workshop_mcp.txt
+```
+
+Leave it running. Ctrl-C stops it.
+
+## 2. Start Claude Code and connect it
+
+Open a second Sherlock terminal and log in to the session's machine, as in
+Tier 1 (the name is in the session's prompt). AI assistants like Claude Code
+belong in a session, not on a login node:
 
 ```bash
-# 1. Start the server on a compute node
-sbatch submit_server.sh
-tail -f logs/server_<jobid>.out     # prints the exact commands to run next
-
-# 2. Forward a local port — same pattern as Tier 4
-ADDR=$(cat $SCRATCH/hpc_workshop_mcp.txt)
-ssh -NfL 8080:localhost:${ADDR#*:} ${ADDR%:*}
+ssh <machine>
+cd ~/hpc-server-workshop/03-mcp-server
+ml claude-code
 ```
 
-Streamable HTTP is ordinary HTTP, so the tunnel is identical to
-[Tier 4's](../04-web-gui/README.md#2-you-forward-a-local-port-to-it) —
-including the requirement that the bind address match the tunnel form. The MCP
-endpoint is at **`/mcp`**, so through the tunnel it's
-`http://localhost:8080/mcp`.
-
-### Connect Claude Code
+Tell Claude Code about the server. This reads the server's address and your
+token from their files, so there's nothing to copy:
 
 ```bash
-claude mcp add --transport http workshop-docs http://localhost:8080/mcp
-claude mcp list          # confirm it registered
+claude mcp add --transport http workshop-docs "http://$(cat $SCRATCH/hpc_workshop_mcp.txt)/mcp" -H "x-token: $(cat ~/.hpc_workshop/token)"
 ```
 
-### Connect Claude Desktop
+Then start it:
 
-Claude Desktop can't take a remote URL directly — `"type": "sse"` is not
-valid in `claude_desktop_config.json`, which is why everything goes through the
-`mcp-remote` shim. Add to
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "workshop-docs": {
-      "command": "npx",
-      "args": ["mcp-remote", "http://localhost:8080/mcp"]
-    }
-  }
-}
+```bash
+claude
 ```
 
-Restart Claude Desktop. Requires Node.js for `npx`.
+The first time, Claude Code asks you to sign in: choose your Stanford account,
+open the link it shows in your laptop's browser, and paste back the code. Then
+type `/mcp`: `workshop-docs` should be listed as connected, with three tools.
 
-### Try it
+## 3. Ask it things
 
-Ask a question that needs the tools rather than naming one:
+Ask about the workshop's documents:
 
-- "What storage should I use for job output on Sherlock, and why?"
-- "My job died with CUDA out of memory. What do the docs suggest?"
-- "How do I load a specific version of Python in a batch script?"
+- "Using the workshop docs, what should I do when a job dies with CUDA out of memory?"
+- "Which workshop document covers loading a specific Python version, and what does it say?"
+- "List the workshop documents and summarize each in one line."
+
+Claude asks permission the first time it uses each tool, then shows which tool
+it called and what came back. In testing it searched for "out of memory",
+then read `gpu-jobs.md` and answered from it.
+
+Now ask a Sherlock question without mentioning the workshop docs, such as
+"What storage should I use for job output?". Claude Code on Sherlock already
+reads Sherlock's own guidance for AI tools (`/etc/agents/`), and for a general
+question like this it answers from those files instead of calling your tools.
+That's how MCP works: you add tools, and Claude decides which source fits
+the question.
+
+## 4. Stop
+
+`/exit` leaves Claude Code. Ctrl-C stops the server, and `exit` leaves the
+session.
+
+The server gets a new port each time it starts, so next time, update Claude
+Code's entry before starting `claude`:
+
+```bash
+claude mcp remove workshop-docs
+claude mcp add --transport http workshop-docs "http://$(cat $SCRATCH/hpc_workshop_mcp.txt)/mcp" -H "x-token: $(cat ~/.hpc_workshop/token)"
+```
 
 ## Troubleshooting
 
-| Symptom | Cause |
+| What you see | Likely cause |
 |---|---|
-| `406 Not Acceptable` | Client didn't send `Accept: application/json, text/event-stream`. Real clients do; hand-rolled `curl` often doesn't |
-| `421 Invalid Host header` | You forwarded to a local port the server doesn't allow. Set `ALLOWED_HOSTS="localhost:<your port>"` in `submit_server.sh` |
-| `Connection refused` | Tunnel points at the wrong place — see [Tier 4](../04-web-gui/README.md#3-you-open-httplocalhost8080) |
-| Tools don't appear | Restart the client after editing config; check `claude mcp list` |
+| `workshop-docs` shows as failed in `/mcp` | The server stopped, or restarted on a new port. Check its terminal, then remove and add it again (step 4) |
+| `401` / "Missing or wrong token" | The token changed since you added the server. Remove and add it again |
+| "OAuth session expired" | Your Claude Code sign-in ran out. Run `claude` and type `/login` |
 
-DNS-rebinding protection is on by default and validates the `Host` header.
-Through a tunnel the client sends `localhost:8080`, which isn't the server's
-own hostname — so allowed hosts must be set explicitly. `mcp_server.py` allows
-the common local ports; anything else needs `ALLOWED_HOSTS`.
+## Connecting from your laptop instead
 
-## Keeping it all on Sherlock
+If you have Claude Code on your laptop, you can connect it to the same server
+through an SSH tunnel, as in Tier 1. Get the address with
+`cat $SCRATCH/hpc_workshop_mcp.txt` on Sherlock, then on your laptop:
 
-The default path sends your prompts and the retrieved document text to
-Anthropic. To keep everything inside Stanford, run the model on Sherlock too —
-`ml ollama` on a GPU node, exactly the service pattern from Tier 2, with its
-endpoint in `~/.ollama_server`. Then either:
+```bash
+ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
+```
 
-- **Stay in the terminal.** Point a CLI agent at the local model. Several
-  Sherlock modules support this — OpenCode, Crush, and `pi` all take an
-  OpenAI-compatible `base_url`, and several also speak MCP, so they can use
-  this server's tools with a local model.
-- **Drive it from your laptop.** Forward two ports — Ollama's and this
-  server's — so the model and the tools both stay on the cluster while you
-  work in a local editor.
+and in another laptop terminal, with your token (`cat ~/.hpc_workshop/token`
+on Sherlock) in place of `<token>`:
 
-The honest caveat: small local models are noticeably worse at multi-step tool
-calling than the hosted ones. They pick the wrong tool, or loop. Ollama also
-caps the context window at 4k on GPUs under 24 GB regardless of what the model
-supports, and agents need far more — so you must raise `num_ctx` via a
-Modelfile before an agent works at all.
+```bash
+claude mcp add --transport http workshop-docs http://localhost:8080/mcp -H "x-token: <token>"
+```
 
-See the Sherlock docs for the details, which are more current than anything
-pinned here: [Ollama][ollama] and [AI coding agents][agents].
+(This route was tested with direct requests through the tunnel, not yet from
+Claude Code on a laptop.)
 
-## Adapting this
+## Using your own documents
 
-`search_docs` is a case-insensitive substring scan — deliberately the dumbest
-thing that works. Swapping that one function for real retrieval (BM25, vector
-search) is how this becomes useful on a real corpus. The tool interface stays
-the same, so the client never notices.
+Point `DOCS_DIR` in `submit_server.sh` at your own folder of Markdown (`.md`)
+files and the tools work unchanged. `search_docs` is a plain word match; for a
+large collection you'd replace that one function with a real search engine,
+and Claude would use it the same way.
 
-Point `DOCS_DIR` at your own directory of markdown and the tools work
-unchanged.
+If your documents can't go to Anthropic at all, the model has to run on
+Sherlock too, for example with Ollama from Tier 2; see Sherlock's docs on
+[AI coding agents][agents]. Expect worse results: small models are much less
+reliable at choosing and chaining tools than Claude.
 
-[ollama]: https://www.sherlock.stanford.edu/docs/software/using/ollama/
 [agents]: https://www.sherlock.stanford.edu/docs/software/ai/coding-agents/

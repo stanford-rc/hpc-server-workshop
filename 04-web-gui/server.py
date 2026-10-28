@@ -15,25 +15,29 @@ so two people on the same node don't collide, then write "<node>:<port>" to a
 known file so the tunnel command can be built from it.
   https://www.sherlock.stanford.edu/docs/software/using/ollama/
 
-Bind address matters — it has to agree with your tunnel form. See README.md:
-  BIND_HOST=127.0.0.1 (default) -> ssh -NfL 8080:localhost:<port> <node>
-  BIND_HOST=0.0.0.0             -> ssh -NfL 8080:<node>:<port> login.sherlock.stanford.edu
+Any machine on Sherlock can connect, so everything except the page itself
+needs the token from TOKEN_FILE (see Tier 1), sent either as an "x-token"
+header or as an "x-token" cookie. The page has a box that sets the cookie,
+which is what makes its plain download links work.
 
-Start manually:
-  python server.py
+From your laptop:  ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
+then open http://localhost:8080
 
-Via SLURM:
-  sbatch submit_server.sh
+Start it:
+  bash submit_server.sh      # inside an sh_dev session
+  sbatch submit_server.sh    # or as a batch job
 """
 
 import os
+import secrets
 import shutil
 import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Security, UploadFile
+from fastapi.security import APIKeyCookie, APIKeyHeader
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -43,7 +47,25 @@ RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", BASE_DIR / "results"))
 INPUTS_DIR = Path(os.environ.get("INPUTS_DIR", BASE_DIR / "inputs"))
 
 ADDR_FILE = Path(os.environ.get("SERVER_ADDR_FILE", "/tmp/hpc_workshop_gui.txt"))
-BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
+# 0.0.0.0 = accept connections from any machine on Sherlock; the token keeps
+# everyone else out.
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")
+TOKEN_FILE = Path(os.path.expanduser(os.environ.get("TOKEN_FILE", "~/.hpc_workshop/token")))
+if not TOKEN_FILE.exists():
+    raise SystemExit(f"No token file at {TOKEN_FILE}. Make one first (see the Tier 1 README).")
+TOKEN = TOKEN_FILE.read_text().strip()
+
+token_header = APIKeyHeader(name="x-token", auto_error=False)
+token_cookie = APIKeyCookie(name="x-token", auto_error=False)
+
+
+def require_token(
+    from_header: str | None = Security(token_header),
+    from_cookie: str | None = Security(token_cookie),
+):
+    given = from_header or from_cookie
+    if not given or not secrets.compare_digest(given, TOKEN):
+        raise HTTPException(status_code=401, detail="Missing or wrong token")
 
 
 def pick_port() -> int:
@@ -67,9 +89,8 @@ PORT = pick_port()
 def safe_name(filename: str) -> str:
     """Reduce a client-supplied filename to a bare name inside our directory.
 
-    This server has no authentication — anyone who can reach the port can call
-    it. Without this, a filename like "../../.ssh/authorized_keys" would let a
-    caller read or write outside the intended directory.
+    Filenames come from the browser. Without this check, a name like
+    "../../.ssh/authorized_keys" would read or write outside the intended folder.
     """
     name = os.path.basename(filename or "")
     if not name or name in {".", ".."} or "/" in name or "\\" in name:
@@ -82,29 +103,26 @@ async def lifespan(app: FastAPI):
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     INPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # "<node>:<port>", matching the format the Sherlock Ollama doc uses, so the
-    # tunnel command can be built with shell parameter expansion:
-    #   ADDR=$(cat "$SERVER_ADDR_FILE")
-    #   ssh -NfL 8080:localhost:${ADDR#*:} ${ADDR%:*}
+    # "<machine>:<port>", the same format as the other tiers.
     node = socket.gethostname()
     ADDR_FILE.parent.mkdir(parents=True, exist_ok=True)
     ADDR_FILE.write_text(f"{node}:{PORT}")
 
-    # flush=True: SLURM redirects stdout to a file, which block-buffers by
-    # default. Without it these lines can sit unflushed for the life of the
-    # job and `tail -f logs/server_<jobid>.out` shows nothing.
+    # flush=True so the lines show up right away in a batch job's log file.
     print(
-        f"Serving on {BIND_HOST}:{PORT} (node {node})\n"
+        f"Web server on {node}:{PORT}\n"
         f"Address written to {ADDR_FILE}\n"
-        f"From your laptop:\n"
-        f"  ssh -NfL 8080:localhost:{PORT} {node}\n"
-        f"  then open http://localhost:8080",
+        f"On your laptop, open the tunnel (leave it running):\n"
+        f"  ssh -N -L 8080:{node}:{PORT} login.sherlock.stanford.edu\n"
+        f"then open http://localhost:8080 and paste your token into the page.",
         flush=True,
     )
     yield
 
 
-app = FastAPI(title="HPC Web GUI Server", lifespan=lifespan)
+# dependencies=... applies the token check to every endpoint below; the page
+# itself (mounted at the bottom) stays open so you can paste the token into it.
+app = FastAPI(title="HPC Web GUI Server", lifespan=lifespan, dependencies=[Depends(require_token)])
 
 
 @app.get("/health")
