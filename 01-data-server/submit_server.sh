@@ -16,4 +16,5 @@ module load python/3.12.1    # make Sherlock's Python 3.12 available
 # environment (see the README) and activate that instead.
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 
+rm -f "$SERVER_ADDR_FILE"   # clear any address left by an earlier server
 python server.py

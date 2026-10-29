@@ -40,6 +40,7 @@ MODEL="${MODEL:-gemma3:4b}"
 OLLAMA_BIND="${OLLAMA_BIND:-127.0.0.1}"
 
 ADDR_FILE="${SERVER_ADDR_FILE:-$SCRATCH/hpc_workshop_ollama.txt}"
+rm -f "$ADDR_FILE"   # clear any address left by an earlier server
 
 # Load Ollama unless you already did (ml ollama, in the interactive route).
 command -v ollama >/dev/null 2>&1 || ml ollama
