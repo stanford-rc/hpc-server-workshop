@@ -26,20 +26,40 @@ tier in this workshop relies on:
 | `submit_client.sh` | Runs the client |
 | `data/jobs.csv` | The sample data (made up) |
 
-## 1. Make your token (once, on a login node)
+## 1. Log in to Sherlock
+
+In a terminal on your laptop, with your SUNet ID in place of `<SUNetID>`:
+
+```bash
+ssh <SUNetID>@login.sherlock.stanford.edu
+```
+
+Enter your SUNet password and approve the Duo prompt. You're now on a **login
+node**, the shared machine everyone lands on first. If you don't have the
+workshop files yet, get them:
+
+```bash
+cd ~
+git clone https://github.com/stanford-rc/hpc-server-workshop.git
+```
+
+## 2. Make your token (once)
 
 A server on a compute node can be reached from any other machine on Sherlock.
 To keep everyone else out, every request has to include a **token**: a long
-random password that only you have. Make one now, in a Sherlock terminal:
+random password that only you have. Make one now, on the login node:
 
 ```bash
+ml python/3.12.1
 mkdir -p ~/.hpc_workshop
 python3 -c "import secrets; print(secrets.token_urlsafe(32))" > ~/.hpc_workshop/token
 chmod 600 ~/.hpc_workshop/token
 ls -l ~/.hpc_workshop/token
 ```
 
-`ls -l` should show `-rw-------`: you can read the file and nobody else can.
+`ml` is short for `module load`: Sherlock keeps software in **modules**, and
+this one makes Python 3.12 available in your terminal. `ls -l` should show
+`-rw-------`: you can read the file and nobody else can.
 That's what `chmod 600` does, and it's the whole lock: whoever can read this
 file can use your servers. Every tier in the workshop uses this same file.
 
@@ -51,7 +71,7 @@ file can use your servers. Every tier in the workshop uses this same file.
 > people outside the group, give them read access to the file with an ACL
 > (`setfacl`). Don't put research data behind a server without a token.
 
-## 2. Start a session and the server
+## 3. Start a session and the server
 
 Servers don't run on login nodes. Ask for an **interactive session** on a
 compute node instead:
@@ -94,7 +114,7 @@ Two things just happened that the rest of the workshop relies on:
   so the server writes `<machine>:<port>` to an **address file** in your
   scratch space (`$SCRATCH`), which every Sherlock machine can read.
 
-## 3. Ask it questions
+## 4. Ask it questions
 
 Open a **second terminal** on Sherlock. It starts on a login node, so first
 log in to the machine your session is on (the name in your session's prompt):
@@ -147,7 +167,7 @@ first three jobs.
 
 Type `exit()` to leave Python when you're done.
 
-## 4. Look at it from your laptop
+## 5. Look at it from your laptop
 
 FastAPI, the toolkit `server.py` is built with, makes a web page that lists
 every endpoint and lets you try them. To see it in your laptop's browser you
@@ -176,7 +196,7 @@ Now open **http://localhost:8080/docs** in your browser. Click **Authorize**,
 paste your token (`cat ~/.hpc_workshop/token` in a Sherlock terminal shows it),
 then open `/stats`, click **Try it out**, then **Execute**.
 
-## 5. Stop
+## 6. Stop
 
 Press Ctrl-C in the server's terminal, then type `exit` to leave the session
 (or let the hour run out). Ctrl-C in the laptop terminal closes the tunnel.
