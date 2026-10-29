@@ -232,8 +232,15 @@ press **Execute**. The answer appears under **Response body**.
 
 ## 6. Stop
 
-Press Ctrl-C in the server's terminal, then type `exit` to leave the session
-(or let the hour run out). Ctrl-C in the laptop terminal closes the tunnel.
+Close everything from this tier before the next one:
+
+- **Server terminal:** Ctrl-C stops the server, then `exit` ends the session.
+- **Second terminal:** `exit` leaves the session's machine (it closes by itself
+  once the session ends).
+- **Laptop:** Ctrl-C closes the tunnel.
+
+Both Sherlock terminals are then back on a login node. Your token file and the
+workshop files stay; you'll use them in every tier.
 
 ## Tip: asking from a script
 

@@ -28,6 +28,10 @@ model, for example one trained for your field.
 
 ## 1. A session with a GPU
 
+Start from a login node, with Tier 1 closed (its step 6). Tier 2 needs a GPU,
+so it's a **new session**, on a different machine, and the second terminal will
+`ssh` to that new machine. Your token file and the workshop files carry over.
+
 Language models run much faster on a **GPU**. Sherlock's `dev` machines have
 GPU **slices**: one physical GPU split into several smaller ones, each with
 6 GB of its own memory. A slice is plenty for the small models used here, and
@@ -45,12 +49,14 @@ since the model and its libraries need more than the default 4 GB.
 In the session:
 
 ```bash
+ml purge
 ml ollama
 cd ~/hpc-server-workshop/02-model-server
 bash submit_ollama.sh
 ```
 
-`ml` is short for `module load`: it makes Ollama available in this terminal.
+`ml purge` clears any modules this terminal already had, and `ml ollama` makes
+Ollama available.
 The script starts Ollama on a free port, gets the model and writes Ollama's
 address to `$SCRATCH/hpc_workshop_ollama.txt`. The model is `gemma3:4b`, a
 4-billion-parameter model from Google that fits easily on a slice (about
