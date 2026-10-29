@@ -75,24 +75,25 @@ the same two lines every script in this workshop starts with. (If you see a
 note that `gcc` was reloaded with a version change, that's harmless.) In
 testing the two answers took about 20 seconds.
 
-**Compare a smaller model.** Stop Ollama with Ctrl-C in the first terminal,
-start it with `MODEL=llama3.2:1b bash submit_ollama.sh`, and run
-`MODEL=llama3.2:1b python3 ollama_client.py` in the second. Small models often
-sound sure of themselves and are wrong: in testing, `llama3.2:1b` and
-`llama3.2:3b` both expanded "SLURM" into a made-up name, and `phi4-mini`
-multiplied 4 × 4000 MB into "32000 GB", while `gemma3:4b` got all three test
-questions right. Check what a model tells you, and test a few before you pick
-one.
-
-To see every model Sherlock has, list the library:
+**Choosing a model.** Sherlock has hundreds of Ollama models. To see them all,
+list the library:
 
 ```bash
 ls /oak/stanford/datasets/common/ollama/manifests/registry.ollama.ai/library
 ```
 
-The folder names are the model names; the files inside each are its sizes (for
-example `gemma3` has `1b`, `4b`, `12b`, `27b`). On a GPU slice, stay at about
-4b or below.
+The folder names are the model names, and the files inside each are its sizes
+(for example `gemma3` has `1b`, `4b`, `12b`, `27b`). On a GPU slice, stay at
+about 4b or below. To use one, stop Ollama with Ctrl-C in the first terminal,
+start it with that model, and run the client with the same name:
+
+```bash
+MODEL=<name>:<size> bash submit_ollama.sh
+```
+
+```bash
+MODEL=<name>:<size> python3 ollama_client.py
+```
 
 Stop Ollama with **Ctrl-C** before part B, so the two don't compete for the
 slice's memory.
