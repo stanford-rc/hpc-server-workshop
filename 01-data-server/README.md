@@ -143,10 +143,12 @@ Put it in place of `<machine>`:
 ssh <machine>
 ```
 
-That puts you inside your session's job, sharing its core and memory. Start
-Python with the workshop's packages:
+That puts you inside your session's job, sharing its core and memory. It's a
+new terminal, though, so modules you loaded in the other one aren't loaded
+here. Load Python again, then start it with the workshop's packages:
 
 ```bash
+ml python/3.12.1
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 python3
 ```
