@@ -178,7 +178,7 @@ server's address:
 | Endpoint | What it answers |
 |---------|-----------------|
 | `/stats` | Totals and averages across all jobs |
-| `/jobs` | Job records. Filters: `cluster`, `status`, `limit` |
+| `/jobs` | Job records. Filters: `cluster` (`sherlock`, `farmshare`), `status` (`completed`, `failed`, `pending`, `running`), `limit` |
 | `/jobs/<id>` | One job by its ID |
 | `/health` | Whether the server is up |
 
@@ -217,9 +217,16 @@ It asks for your SUNet password and Duo, then seems to hang. That's correct:
 "connect port 8080 on this laptop to `<machine>:<port>` on Sherlock". Leave it
 running; **Ctrl-C** closes the tunnel.
 
-Now open **http://localhost:8080/docs** in your browser. Click **Authorize**,
-paste your token (`cat ~/.hpc_workshop/token` in a Sherlock terminal shows it),
-then open `/stats`, click **Try it out**, then **Execute**.
+Now open **http://localhost:8080/docs** in your browser. Click **Authorize**
+and paste your token. To see it, run this in a Sherlock terminal and copy what
+it prints:
+
+```bash
+cat ~/.hpc_workshop/token
+```
+
+Then open `/jobs`, pick a **status** from its menu (for example `failed`) and
+press **Execute**. The answer appears under **Response body**.
 
 ## 6. Stop
 

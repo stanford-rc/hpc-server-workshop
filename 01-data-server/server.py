@@ -20,6 +20,7 @@ import secrets
 import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 import uvicorn
@@ -84,8 +85,13 @@ async def lifespan(app: FastAPI):
 
 # dependencies=... applies the token check to every endpoint below. FastAPI's
 # own /docs page stays open; use its "Authorize" button to paste the token.
+# tryItOutEnabled: the /docs page's input boxes are ready to fill in, without
+# first clicking "Try it out".
 app = FastAPI(
-    title="HPC Job Data Server", lifespan=lifespan, dependencies=[Depends(require_token)]
+    title="HPC Job Data Server",
+    lifespan=lifespan,
+    dependencies=[Depends(require_token)],
+    swagger_ui_parameters={"tryItOutEnabled": True},
 )
 
 
@@ -95,8 +101,13 @@ def health():
 
 
 @app.get("/jobs")
-def list_jobs(cluster: str = "", status: str = "", limit: int = 20):
-    """List jobs with optional filters."""
+def list_jobs(
+    # Listing the allowed values makes them drop-down menus on the /docs page.
+    cluster: Literal["sherlock", "farmshare"] | None = None,
+    status: Literal["completed", "failed", "pending", "running"] | None = None,
+    limit: int = 20,
+):
+    """List jobs, optionally only one cluster's or one status's."""
     result = df.copy()
     if cluster:
         result = result[result["cluster"] == cluster]
