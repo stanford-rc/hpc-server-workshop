@@ -186,7 +186,11 @@ server's address:
 `params={"cluster": "farmshare", "status": "completed"}`.) Then ask for just the
 first three jobs.
 
-Type `exit()` to leave Python when you're done.
+When you're done, leave Python, which takes you back to the shell prompt:
+
+```python
+exit()
+```
 
 ## 5. Look at it from your laptop
 
@@ -195,7 +199,7 @@ every endpoint and lets you try them. To see it in your laptop's browser you
 need an **SSH tunnel**: an SSH connection that carries a port on your laptop
 through to the server.
 
-Get the server's address in a Sherlock terminal:
+Get the server's address, in that same terminal:
 
 ```bash
 cat $SCRATCH/hpc_workshop_server.txt
