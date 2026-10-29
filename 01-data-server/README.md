@@ -134,10 +134,13 @@ Three things just happened:
 ## 4. Ask it questions
 
 Open a **second terminal** on Sherlock. It starts on a login node, so first
-log in to the machine your session is on (the name in your session's prompt):
+log in to the machine your session is on. Find its name in your first
+terminal: it's in the session's prompt (`[<you>@sh04-18n32 ~]$`) and in the
+server's `Listening on ... on sh04-18n32.int` line. Yours will be different.
+Put it in place of `<machine>`:
 
 ```bash
-ssh sh04-18n32
+ssh <machine>
 ```
 
 That puts you inside your session's job, sharing its core and memory. Start
