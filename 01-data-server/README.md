@@ -104,8 +104,23 @@ Address written to /scratch/users/<you>/hpc_workshop_server.txt
 
 Leave it running in this terminal. To stop it later, press **Ctrl-C**.
 
-Two things just happened that the rest of the workshop relies on:
+Three things just happened:
 
+- **It loaded the data, once.** `data/jobs.csv` is a small made-up table of 20
+  past cluster jobs, one row per job (the 20 records in the message). The first
+  few rows:
+
+  ```
+  job_id,user,partition,cluster,nodes,cpus,mem_gb,runtime_hours,status,submit_time
+  1001,alice,normal,sherlock,1,8,32,2.5,completed,2024-01-15 09:00:00
+  1002,bob,gpu,sherlock,1,4,16,0.8,failed,2024-01-15 10:30:00
+  1003,carol,normal,sherlock,2,16,64,6.2,completed,2024-01-15 11:00:00
+  ```
+
+  The server read it into memory when it started and keeps it there, so every
+  question after this is answered from memory without reading the file again.
+  That's the point of a server. With 20 rows it hardly matters; with a big
+  dataset or a model that takes minutes to load, it matters a lot.
 - **It picked a free port.** A **port** is a numbered "door" on a machine that
   a server listens at. Many people share each compute node, so a fixed number
   like 8080 would clash with someone else's. Instead the server asks the system
