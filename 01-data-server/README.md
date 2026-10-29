@@ -145,7 +145,7 @@ Python with the workshop's packages:
 
 ```bash
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
-python
+python3
 ```
 
 In Python, read where the server is and your token:

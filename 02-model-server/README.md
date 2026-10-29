@@ -67,7 +67,7 @@ ssh <machine>
 cd ~/hpc-server-workshop/02-model-server
 ml python/3.12.1
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
-python ollama_client.py
+python3 ollama_client.py
 ```
 
 The third and fourth commands make the workshop's Python packages available,
@@ -77,7 +77,7 @@ testing the two answers took about 20 seconds.
 
 **Compare a smaller model.** Stop Ollama with Ctrl-C in the first terminal,
 start it with `MODEL=llama3.2:1b bash submit_ollama.sh`, and run
-`MODEL=llama3.2:1b python ollama_client.py` in the second. Small models often
+`MODEL=llama3.2:1b python3 ollama_client.py` in the second. Small models often
 sound sure of themselves and are wrong: in testing, `llama3.2:1b` and
 `llama3.2:3b` both expanded "SLURM" into a made-up name, and `phi4-mini`
 multiplied 4 × 4000 MB into "32000 GB", while `gemma3:4b` got all three test
