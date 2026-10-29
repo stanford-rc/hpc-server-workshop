@@ -59,7 +59,7 @@ The same few pieces appear in every tier:
    open another Sherlock terminal and `ssh <machine>`. You land inside your
    session's job, with its CPU and memory.
 5. **An SSH tunnel to reach it from your laptop.** One command on your laptop,
-   `ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu`, makes
+   `ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu`, makes
    http://localhost:8080 in your browser lead to the server.
 
 Each tier's scripts load what they need: `module load python/3.12.1`, then the

@@ -20,7 +20,7 @@ needs the token from TOKEN_FILE (see Tier 1), sent either as an "x-token"
 header or as an "x-token" cookie. The page has a box that sets the cookie,
 which is what makes its plain download links work.
 
-From your laptop:  ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
+From your laptop:  ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
 then open http://localhost:8080
 
 Start it:
@@ -113,7 +113,7 @@ async def lifespan(app: FastAPI):
         f"Web server on {node}:{PORT}\n"
         f"Address written to {ADDR_FILE}\n"
         f"On your laptop, open the tunnel (leave it running):\n"
-        f"  ssh -N -L 8080:{node}:{PORT} login.sherlock.stanford.edu\n"
+        f"  ssh -S none -N -L 8080:{node}:{PORT} login.sherlock.stanford.edu\n"
         f"then open http://localhost:8080 and paste your token into the page.",
         flush=True,
     )

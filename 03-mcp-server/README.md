@@ -119,7 +119,7 @@ through an SSH tunnel, as in Tier 1. Get the address with
 `cat $SCRATCH/hpc_workshop_mcp.txt` on Sherlock, then on your laptop:
 
 ```bash
-ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
+ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
 ```
 
 and in another laptop terminal, with your token (`cat ~/.hpc_workshop/token`

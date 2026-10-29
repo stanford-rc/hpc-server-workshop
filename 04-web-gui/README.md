@@ -63,13 +63,13 @@ the tunnel command, for example:
 Web server on sh04-18n32.int:39831
 ...
 On your laptop, open the tunnel (leave it running):
-  ssh -N -L 8080:sh04-18n32.int:39831 login.sherlock.stanford.edu
+  ssh -S none -N -L 8080:sh04-18n32.int:39831 login.sherlock.stanford.edu
 then open http://localhost:8080 and paste your token into the page.
 ```
 
 ## 3. Open the page (on your laptop)
 
-Copy the `ssh -N -L ...` line into a terminal **on your laptop** and sign in
+Copy the `ssh -S none -N -L ...` line into a terminal **on your laptop** and sign in
 with your SUNet password and Duo. Leave it running, as in Tier 1.
 
 Open **http://localhost:8080**. The page says "paste your token above and press

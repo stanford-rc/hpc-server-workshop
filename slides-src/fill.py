@@ -110,10 +110,10 @@ write('slide8.xml', [
     ('type="title"', [T("3. How do I reach it from my laptop?")], 2800),
     ('type="body"', [
         para(("One command on your laptop:", "b")),
-        para(("ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu", "mono")),
+        para(("ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu", "mono")),
         para(("Then open http://localhost:8080. Your laptop's port 8080 now leads to the server.", "")),
         para(("SUNet password and Duo as usual. Ctrl-C closes the tunnel.", "")),
-        para(("If your SSH config shares connections (ControlMaster), a closed tunnel can keep the port. ", ""), ("ssh -O exit", "mono"), (" frees it.", "")),
+        para(("-S none", "mono"), (" makes it its own connection, so Ctrl-C always frees the port.", "")),
     ], 1400),
 ])
 

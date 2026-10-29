@@ -209,13 +209,15 @@ Then, in a terminal **on your laptop**, put that machine name and port in place
 of `<machine>` and `<port>`:
 
 ```bash
-ssh -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
+ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
 ```
 
 It asks for your SUNet password and Duo, then seems to hang. That's correct:
 `-N` means "don't open a shell, just carry the connection", and `-L` means
-"connect port 8080 on this laptop to `<machine>:<port>` on Sherlock". Leave it
-running; **Ctrl-C** closes the tunnel.
+"connect port 8080 on this laptop to `<machine>:<port>` on Sherlock". `-S none`
+makes the tunnel its own connection, even if your SSH settings share
+connections, so that **Ctrl-C** really closes it. Leave it running until you're
+done.
 
 Now open **http://localhost:8080/docs** in your browser. Click **Authorize**
 and paste your token. To see it, run this in a Sherlock terminal and copy what
