@@ -50,6 +50,7 @@ To keep everyone else out, every request has to include a **token**: a long
 random password that only you have. Make one now, on the login node:
 
 ```bash
+ml purge
 ml python/3.12.1
 mkdir -p ~/.hpc_workshop
 python3 -c "import secrets; print(secrets.token_urlsafe(32))" > ~/.hpc_workshop/token
@@ -57,8 +58,9 @@ chmod 600 ~/.hpc_workshop/token
 ls -l ~/.hpc_workshop/token
 ```
 
-`ml` is short for `module load`: Sherlock keeps software in **modules**, and
-this one makes Python 3.12 available in your terminal. `ls -l` should show
+`ml` is short for `module load`: Sherlock keeps software in **modules**.
+`ml purge` unloads any you already had, so you start clean, and
+`ml python/3.12.1` makes Python 3.12 available. `ls -l` should show
 `-rw-------`: you can read the file and nobody else can.
 That's what `chmod 600` does, and it's the whole lock: whoever can read this
 file can use your servers. Every tier in the workshop uses this same file.
@@ -142,7 +144,6 @@ That puts you inside your session's job, sharing its core and memory. Start
 Python with the workshop's packages:
 
 ```bash
-ml python/3.12.1
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 python
 ```
