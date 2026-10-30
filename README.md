@@ -32,8 +32,8 @@ of copying them to your laptop.
 
 Most servers, like the ones behind websites, run all the time on machines set
 aside for them. On Sherlock they can't: it's a shared system, and everything
-runs as a **job** with a time limit. A server runs while your session or job
-does, and stops when it ends.
+runs as a **job** with a time limit. A server on an HPC cluster can only run
+while your session or job does, and stops when it ends.
 
 So a server on Sherlock isn't always on, but it can be **always available**:
 the scripts are ready, and you start the server when you sit down to work and
