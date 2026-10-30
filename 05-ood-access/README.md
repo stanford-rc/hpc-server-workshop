@@ -33,8 +33,13 @@ See the [Sherlock OnDemand docs][ood_docs] for the full list and screenshots.
 
 ## Option A — Query your server from a notebook
 
-Start an **Interactive Apps > Jupyter Notebook** session, then read the
-address file your server wrote and call it directly. The notebook runs on a
+Start an **Interactive Apps > Jupyter Notebook** session. The start form asks
+which folder the session starts in. Jupyter's file browser only shows that
+folder and what's inside it, so pick one that holds the files you want to
+see: your home folder (`/home/users/<SUNetID>`) shows the workshop files,
+including Tier 4's `results/`.
+
+Then read the address file your server wrote and call it directly. The notebook runs on a
 compute node, so it can reach your server with no tunnel. Send your token, as
 every client does:
 
