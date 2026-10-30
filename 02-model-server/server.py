@@ -1,6 +1,8 @@
 """
 server.py — FastAPI model inference server (Tier 2).
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Loads a Hugging Face text-generation model and answers prompts at /generate.
 On startup it picks a free port and writes "<machine>:<port>" to
 SERVER_ADDR_FILE so a client can find it. Every request must include the token

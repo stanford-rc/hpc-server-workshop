@@ -1,4 +1,5 @@
 #!/bin/bash
+# Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
 # Rebuild HPC-Server-Workshop.pptx from the SRC template.
 #   SKILL=<path to pptx skill dir> ./build.sh
 set -euo pipefail

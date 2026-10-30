@@ -1,3 +1,4 @@
+# Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
 """Fill SRC-template placeholders. Copies each placeholder's own <a:pPr> so
 template spacing/alignment survive; only text, size, weight, and font differ."""
 import re, html

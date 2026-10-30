@@ -1,6 +1,8 @@
 """
 predict.py — the compute step that produces the output the site serves.
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 This is the middle of the workflow:
 
   browser upload  ->  INPUTS_DIR  ->  [predict.py]  ->  RESULTS_DIR  ->  browser download

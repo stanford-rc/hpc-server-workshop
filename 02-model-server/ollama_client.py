@@ -1,6 +1,8 @@
 """
 ollama_client.py — client for the Ollama path (Tier 2).
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Reads the endpoint Ollama's job wrote, waits until the model can actually
 answer, then sends prompts through the OpenAI-compatible /v1 endpoint.
 

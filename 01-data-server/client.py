@@ -1,6 +1,8 @@
 """
 client.py — Batch client for the Tier 1 data server.
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Reads the server's address from SERVER_ADDR_FILE and the token from TOKEN_FILE,
 waits for the server to be ready, then asks it a few questions. Works from any
 machine on Sherlock.

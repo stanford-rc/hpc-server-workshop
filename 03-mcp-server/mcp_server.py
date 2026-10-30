@@ -1,6 +1,8 @@
 """
 mcp_server.py — MCP server over Streamable HTTP (Tier 3).
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Offers a folder of documentation as three MCP tools. Claude Code connects,
 sees the tools, and decides which to call to answer your question.
 

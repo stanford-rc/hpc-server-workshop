@@ -1,6 +1,8 @@
 """
 server.py — FastAPI data server (Tier 1).
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Loads a table of (made-up) cluster job records and answers questions about it
 over HTTP. On startup it picks a free port and writes "<machine>:<port>" to
 SERVER_ADDR_FILE, so a client can find it.

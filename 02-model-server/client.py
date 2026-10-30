@@ -1,6 +1,8 @@
 """
 client.py — Batch client for the Tier 2 model server.
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Reads the server address from SERVER_ADDR_FILE, waits for the model to load,
 then sends prompts and prints completions.
 

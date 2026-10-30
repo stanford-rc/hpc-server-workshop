@@ -1,4 +1,5 @@
 #!/bin/bash
+# Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
 #SBATCH --job-name=model-server      # name shown in the queue
 #SBATCH --time=1:00:00               # stop the job after this long (hours:minutes:seconds)
 #SBATCH --ntasks=1                   # run one copy of the program

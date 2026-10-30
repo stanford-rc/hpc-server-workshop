@@ -1,6 +1,8 @@
 """
 server.py — Web GUI server (Tier 4).
 
+Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
+
 Serves a small web page *and* the JSON/file API it calls, from one FastAPI app
 on a compute node. You reach it from a browser on your laptop through an SSH
 tunnel; the page can read job results and move files in both directions.
