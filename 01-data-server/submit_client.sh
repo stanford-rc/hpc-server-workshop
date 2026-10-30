@@ -1,5 +1,4 @@
 #!/bin/bash
-# Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
 #SBATCH --job-name=data-client       # name shown in the queue
 #SBATCH --time=0:30:00               # stop the job after this long (hours:minutes:seconds)
 #SBATCH --ntasks=1                   # run one copy of the program

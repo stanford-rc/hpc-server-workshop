@@ -1,5 +1,4 @@
 #!/bin/bash
-# Brad Rittenhouse, Stanford Research Computing (bcritt@stanford.edu)
 #SBATCH --job-name=ollama-server     # name shown in the queue
 #SBATCH --time=1:00:00               # stop the job after this long (hours:minutes:seconds)
 #SBATCH --nodes=1                    # keep everything on one machine
