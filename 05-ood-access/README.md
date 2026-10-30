@@ -21,7 +21,6 @@ covers the need — no code required:
 | **code-server** (VS Code) | Edit code on the cluster in a browser |
 | **RStudio Server** | R analysis with plots |
 | **TensorBoard** | Training curves |
-| **Interactive Desktop** | A full desktop — run a normal browser *on the cluster* |
 | **File Explorer** | Browse, view, upload, and download files directly |
 
 For "I just want to get my results onto my laptop," the **Files** menu already
@@ -57,34 +56,27 @@ The same works for the Tier 1 and Tier 2 servers (`hpc_workshop_server.txt`,
 `hpc_workshop_model.txt`). Ollama is the exception: it only accepts
 connections from its own machine.
 
-## Option B — Reach your own page with the Interactive Desktop
+## Option B — Make an OnDemand app for your lab
 
-Start **Interactive Apps > Interactive Desktop**, open the browser inside that
-desktop session, and go to `http://<node>:<port>` using the values from your
-discovery file. You are browsing from *inside* the cluster, so the node
-hostname resolves — the same URL that fails from your laptop can work here.
+Jupyter and the other apps on the dashboard are OnDemand **interactive apps**.
+Each one is a small folder of files: `form.yml` (the start form),
+`submit.yml.erb` (what the job asks for) and `script.sh.erb` (what the job
+runs). Together they tell OnDemand how to start a job and how to connect your
+browser to it.
 
-Paste your token into the page as in Tier 4.
+You can make your own, for example one that starts the Tier 4 web server.
+Copy an existing app, such as Sherlock's `sh_jupyterlab`, into
+`~/ondemand/dev/<app name>/` and change it. It then shows up in OnDemand under
+**Develop > My Sandbox Apps**, for you only.
 
-## Option C — Publish it as a custom interactive app
+To share it with your lab, put a copy of the folder somewhere your group can
+read, such as `$GROUP_HOME`. Each labmate copies it into their own
+`~/ondemand/dev/` and starts their own session from it. Their session runs as
+them, with their own token and files, so they need to have done the same setup
+first: the workshop files and a token (Tier 1, step 2).
 
-The above options are for *you*. If you want colleagues to launch your tool
-from the OOD dashboard the way they launch Jupyter, that means packaging it as
-a **custom OOD interactive app**: a small directory of templates (`form.yml`,
-`submit.yml.erb`, `script.sh.erb`) that tells OOD how to submit the job and
-where to connect. Researchers do build these on Sherlock — usually starting
-from the `sh_jupyterlab` template — and it's the real answer to "I want a site
-my lab can use."
-
-It's also the option that needs SRCC involvement: app deployment, and any
-proxying of your app's port through the OOD portal, is configured on the
-service side. **Contact SRCC** to scope it.
-
-> **What this workshop deliberately doesn't claim.** There is no documented,
-> general-purpose way to proxy an arbitrary port on a compute node through the
-> Sherlock OOD portal to your laptop's browser. OOD's own apps do exactly that,
-> but through per-app configuration. If you need it, ask SRCC rather than
-> guessing at a URL pattern.
+Putting an app on everyone's dashboard, as an official Sherlock app, is
+something SRC does.
 
 ---
 
@@ -93,13 +85,13 @@ service side. **Contact SRCC** to scope it.
 | | Tier 4 (SSH tunnel) | Tier 5 (OOD) |
 |---|---|---|
 | Setup on your laptop | SSH tunnel per session | None — just a browser |
-| Where the browser runs | Your laptop | A compute node |
+| What talks to your server | Your laptop's browser, through the tunnel | A notebook or app on a compute node |
 | Works with laptop-native tools | Yes (`localhost:8080`) | No |
 | Good for | Driving a custom page you wrote | Notebooks, file transfer, existing apps |
-| Sharing with a lab | No | Yes, via a custom app (with SRCC) |
+| Sharing with a lab | Labmates use your server with a shared token | Each labmate runs their own copy of your app |
 
-They compose: develop against the Tier 4 tunnel, then package as an OOD app
-once it's worth sharing.
+They work together: build your page with the Tier 4 tunnel, then make it an
+OnDemand app once your lab wants to use it.
 
 [ood]: https://ondemand.sherlock.stanford.edu
 [ood_docs]: https://www.sherlock.stanford.edu/docs/user-guide/ondemand/
