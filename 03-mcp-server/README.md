@@ -21,7 +21,9 @@ reads files and searches text, so no GPU is needed. You'll run Claude Code on
 Sherlock too, from Sherlock's `claude-code` module, signed in with your
 Stanford account. The AI model itself runs at Anthropic, so your questions and
 any document text the tools return are sent there. Only point this at material
-you're allowed to use with Stanford's Claude.
+you're allowed to use with Stanford's Claude. You can also do this setup with a
+model that runs on Sherlock, so nothing leaves Stanford; see "Using your own
+documents" at the end.
 
 ## 1. Start the server
 
