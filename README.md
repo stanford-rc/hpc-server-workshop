@@ -3,11 +3,49 @@
 How to run a **server** on Sherlock, and use it from a program, an AI
 assistant or your laptop's browser.
 
-Most cluster jobs start, do their work and stop. A server is different: it
+## Why servers, and why now
+
+Most cluster jobs start, do their work and stop. A **server** is different: it
 loads something once (a table, a model, a set of documents) and then waits for
 questions, so you can ask it many things without paying the loading cost each
-time. This workshop shows how to run one on Sherlock, find it, keep it private,
-and reach it.
+time.
+
+More and more researchers are asking us how to run one, and AI seems to be a
+large part of the reason:
+
+- **AI produces a lot of results to work through.** A model can label
+  thousands of images or summarize thousands of documents in one run. Instead
+  of reading through the output files, you often want to search, filter and
+  ask questions of the results, and a server keeps them loaded and ready for
+  that.
+- **Language models are used through servers.** Chatbots work this way: the
+  model is loaded once, and prompts are sent to it. Running a model on
+  Sherlock's GPUs means running a server.
+- **AI assistants reach your data through servers.** An assistant like Claude
+  can use tools you give it, and those tools are offered by a server (Tier 3).
+
+A server on Sherlock also keeps your work next to your data. Large results,
+models and datasets stay on Sherlock, and you send questions to them instead
+of copying them to your laptop.
+
+## What's different about a server on Sherlock
+
+Most servers, like the ones behind websites, run all the time on machines set
+aside for them. On Sherlock they can't:
+
+- Everything runs as a **job**, with a time limit, on shared machines. A server
+  runs while your session or job does, and stops when it ends.
+- You don't choose which machine you get, or which port is free on it, so the
+  server has to tell you where it is.
+- Other people use the same machines, and any of them could connect to your
+  server, so it needs a password (a **token**).
+- The machines can't be reached from outside Sherlock, so you reach your
+  server from your laptop through an SSH connection.
+
+So a server on Sherlock isn't always on, but it can be **always available**:
+the scripts are ready, and you start the server when you sit down to work and
+stop it when you're done. Each point above is one of the pieces in "How every
+tier works" below, and this workshop shows how to handle each one.
 
 ## Schedule
 
