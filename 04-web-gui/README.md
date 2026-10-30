@@ -32,9 +32,10 @@ setup works for your own analysis.
 | `inputs/` | Where uploads go |
 | `results/` | What the page offers for download (starts with a sample) |
 
-## 1. Start the model (session 1)
+## 1. Start a session and the model
 
-The job needs a model to talk to. Start Ollama as in Tier 2:
+The job needs a model to talk to. Start a session with a GPU and Ollama, as in
+Tier 2:
 
 ```bash
 sh_dev -g 1 -m 8000
@@ -43,27 +44,33 @@ cd ~/hpc-server-workshop/02-model-server
 bash submit_ollama.sh
 ```
 
-Note the machine name in this session's prompt; you'll need it in step 4.
-Leave it running.
+Note the machine name in this session's prompt; you'll need it in steps 2
+and 4. Leave it running.
 
-## 2. Start the web server (session 2)
+## 2. Start the web server
 
-In a second Sherlock terminal:
+The web server runs in the same session. Open a second Sherlock terminal and
+log in to the session's machine, with its name in place of `<machine>`:
 
 ```bash
-sh_dev
+ssh <machine>
+```
+
+As in Tier 1, that puts you inside the session's job. Then start the web
+server:
+
+```bash
 cd ~/hpc-server-workshop/04-web-gui
 bash submit_server.sh
 ```
 
-That's two sessions, the most `dev` allows at once. When it's ready it prints
-the tunnel command, for example:
+When it's ready it prints the tunnel command, for example:
 
 ```
-Web server on sh04-18n32.int:39831
+Web server on sh03-17n14.int:39831
 ...
 On your laptop, open the tunnel (leave it running):
-  ssh -S none -N -L 8080:sh04-18n32.int:39831 login.sherlock.stanford.edu
+  ssh -S none -N -L 8080:sh03-17n14.int:39831 login.sherlock.stanford.edu
 then open http://localhost:8080 and paste your token into the page.
 ```
 
@@ -94,24 +101,30 @@ everything except the page itself without it. Pressing Save stores it in your
 browser as a **cookie**, a small value the browser sends back to this site with
 every request. That's what lets the plain "download" links work too.
 
-Now make a file on your laptop called `prompts.txt` with one question per line,
-for example:
+Now make a file to upload, `prompts.txt`, with one question per line. Open
+another terminal on your laptop and paste this, which puts the file on your
+desktop:
 
-```
+```bash
+cat > ~/Desktop/prompts.txt <<'EOF'
 What is a compute node, in one sentence?
 Why write job output to scratch storage?
+EOF
 ```
 
-and upload it with **Choose file** and **Upload**.
+`cat > ~/Desktop/prompts.txt` writes everything up to the `EOF` line into the
+file. (This works in Terminal on macOS. On Windows, make the file in Notepad
+and save it to your desktop instead.) Upload it on the page with **Choose
+file** and **Upload**, and delete it from your desktop when you're done.
 
 ## 4. Run the job (a terminal on the model's machine)
 
 Ollama only accepts connections from its own machine, so the job has to run
-there. Open a third Sherlock terminal and log in to session 1's machine, with
-its name in place of `<session 1 machine>`:
+there. Open a third Sherlock terminal and log in to the same machine, with its
+name in place of `<machine>`:
 
 ```bash
-ssh <session 1 machine>
+ssh <machine>
 ```
 
 Then run the job on your upload:
@@ -140,8 +153,10 @@ spreadsheet program: one row per prompt, with the model's answer next to it.
 
 ## 6. Stop
 
-Ctrl-C in each session's terminal, then `exit` both sessions, and Ctrl-C the
-tunnel on your laptop.
+- **Web server terminal:** Ctrl-C stops the web server, then `exit`.
+- **Job terminal:** `exit`.
+- **Session terminal:** Ctrl-C stops Ollama, then `exit` ends the session.
+- **Laptop:** Ctrl-C closes the tunnel.
 
 ## How it fits together
 
