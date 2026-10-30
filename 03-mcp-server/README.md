@@ -143,7 +143,7 @@ and Claude would use it the same way.
 
 If your documents can't go to Anthropic at all, the model has to run on
 Sherlock too, for example with Ollama from Tier 2; see Sherlock's docs on
-[AI coding agents][agents]. Expect worse results: small models are much less
+[AI coding agents][agents]. Expect worse results: small models are less
 reliable at choosing and chaining tools than Claude.
 
 [agents]: https://www.sherlock.stanford.edu/docs/software/ai/coding-agents/
