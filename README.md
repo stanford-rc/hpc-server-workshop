@@ -31,21 +31,14 @@ of copying them to your laptop.
 ## What's different about a server on Sherlock
 
 Most servers, like the ones behind websites, run all the time on machines set
-aside for them. On Sherlock they can't:
-
-- Everything runs as a **job**, with a time limit, on shared machines. A server
-  runs while your session or job does, and stops when it ends.
-- You don't choose which machine you get, or which port is free on it, so the
-  server has to tell you where it is.
-- Other people use the same machines, and any of them could connect to your
-  server, so it needs a password (a **token**).
-- The machines can't be reached from outside Sherlock, so you reach your
-  server from your laptop through an SSH connection.
+aside for them. On Sherlock they can't: it's a shared system, and everything
+runs as a **job** with a time limit. A server runs while your session or job
+does, and stops when it ends.
 
 So a server on Sherlock isn't always on, but it can be **always available**:
 the scripts are ready, and you start the server when you sit down to work and
-stop it when you're done. Each point above is one of the pieces in "How every
-tier works" below, and this workshop shows how to handle each one.
+stop it when you're done. "How every tier works" below covers what that takes:
+finding the server, keeping it private and reaching it from your laptop.
 
 ## Schedule
 
