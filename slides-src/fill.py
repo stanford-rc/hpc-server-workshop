@@ -169,6 +169,6 @@ write('slide11.xml', [
         para(("No tunnel at all?  ", "b"), ("Tier 5: an OnDemand session is already inside Sherlock.", "")),
         para(("Keep the token.  ", "b"), ("Don't put research data behind a server anyone on Sherlock can query.", "")),
         para(("Not on the public internet.  ", "b"), ("The way in from outside is SSH with your SUNet ID and Duo.", "")),
-        para(("Something shared and long-running?  ", "b"), ("That needs a proper service: talk to SRCC.", "")),
+        para(("Servers for while you work.  ", "b"), ("Start one in a session or job, use it, and it stops when that ends.", "")),
     ], 1400),
 ])

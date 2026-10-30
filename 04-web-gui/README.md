@@ -164,8 +164,8 @@ tunnel on your laptop.
   described in Tier 1.
 - **Don't try to put this on the public internet.** The only way in from
   outside is an SSH tunnel with your SUNet ID and Duo, and that's how it should
-  stay. A service that many people use over a long time needs a proper server,
-  and that's a conversation with SRCC.
+  stay. The page is for while you're working: it runs inside your session or
+  job and stops when that ends.
 
 ## Running it for real
 
