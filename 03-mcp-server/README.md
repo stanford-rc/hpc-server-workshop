@@ -123,15 +123,27 @@ claude mcp add --transport http workshop-docs "http://$(cat $SCRATCH/hpc_worksho
 ## Connecting from your laptop instead
 
 If you have Claude Code on your laptop, you can connect it to the same server
-through an SSH tunnel, as in Tier 1. Get the address with
-`cat $SCRATCH/hpc_workshop_mcp.txt` on Sherlock, then on your laptop:
+through an SSH tunnel, as in Tier 1. Get the server's address, in a Sherlock
+terminal:
+
+```bash
+cat $SCRATCH/hpc_workshop_mcp.txt
+```
+
+Then on your laptop, with that machine name and port in place of `<machine>`
+and `<port>`:
 
 ```bash
 ssh -S none -N -L 8080:<machine>:<port> login.sherlock.stanford.edu
 ```
 
-and in another laptop terminal, with your token (`cat ~/.hpc_workshop/token`
-on Sherlock) in place of `<token>`:
+Show your token in a Sherlock terminal:
+
+```bash
+cat ~/.hpc_workshop/token
+```
+
+and in another laptop terminal, put it in place of `<token>`:
 
 ```bash
 claude mcp add --transport http workshop-docs http://localhost:8080/mcp -H "x-token: <token>"

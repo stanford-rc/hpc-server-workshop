@@ -73,8 +73,13 @@ Copy the `ssh -S none -N -L ...` line into a terminal **on your laptop** and sig
 with your SUNet password and Duo. Leave it running, as in Tier 1.
 
 Open **http://localhost:8080**. The page says "paste your token above and press
-Save". Show your token in a Sherlock terminal with `cat ~/.hpc_workshop/token`,
-paste it into the Token box and press **Save**. The page now shows
+Save". Show your token in a Sherlock terminal:
+
+```bash
+cat ~/.hpc_workshop/token
+```
+
+Paste it into the Token box and press **Save**. The page now shows
 "connected", lists the sample results, and lists `inputs/`.
 
 The token works the same way as in the other tiers: the server refuses
