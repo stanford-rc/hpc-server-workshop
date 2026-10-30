@@ -66,17 +66,23 @@ scratch space (the script prints "found in on-prem cache"). Leave it running.
 
 Ollama doesn't have a password or token, so it only accepts connections from
 the machine it runs on. To talk to it, open a **second terminal**, log in to
-the session's machine (the name in your session's prompt), and run the client:
+the session's machine, putting its name (from your session's prompt) in place
+of `<machine>`:
 
 ```bash
 ssh <machine>
+```
+
+Then run the client:
+
+```bash
 cd ~/hpc-server-workshop/02-model-server
 ml python/3.12.1
 source /home/groups/sh_support/bcritt/server_workshop/venv/bin/activate
 python3 ollama_client.py
 ```
 
-The third and fourth commands make the workshop's Python packages available,
+The second and third commands make the workshop's Python packages available,
 the same two lines every script in this workshop starts with. (If you see a
 note that `gcc` was reloaded with a version change, that's harmless.) In
 testing the two answers took about 20 seconds.

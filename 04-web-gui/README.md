@@ -95,11 +95,16 @@ and upload it with **Choose file** and **Upload**.
 ## 4. Run the job (a terminal on the model's machine)
 
 Ollama only accepts connections from its own machine, so the job has to run
-there. Open a third Sherlock terminal, log in to session 1's machine, and run
-the job on your upload:
+there. Open a third Sherlock terminal and log in to session 1's machine, with
+its name in place of `<session 1 machine>`:
 
 ```bash
 ssh <session 1 machine>
+```
+
+Then run the job on your upload:
+
+```bash
 cd ~/hpc-server-workshop/04-web-gui
 bash submit_job.sh prompts.txt
 ```

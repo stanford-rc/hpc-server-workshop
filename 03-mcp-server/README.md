@@ -49,10 +49,16 @@ Leave it running. Ctrl-C stops it.
 
 Open a second Sherlock terminal and log in to the session's machine, as in
 Tier 1 (the name is in the session's prompt). AI assistants like Claude Code
-belong in a session, not on a login node:
+belong in a session, not on a login node. Put the machine's name in place of
+`<machine>`:
 
 ```bash
 ssh <machine>
+```
+
+Then:
+
+```bash
 cd ~/hpc-server-workshop/03-mcp-server
 ml claude-code
 ```
