@@ -5,6 +5,12 @@ browser: upload an input file, run the job on Sherlock, and download what it
 produced. This tier answers "can I build a small site to work with my research
 data?"
 
+You've seen a page before: Tier 1's `/docs`. FastAPI makes that one for you,
+and it lets you try a server's endpoints one at a time, which is useful for
+checking that the server works. This time you use a page written for a task,
+`static/index.html`, for people who just want to get the work done, such as
+your labmates. The server, token and tunnel underneath are the same.
+
 Here the job sends a list of prompts to the Ollama model from Tier 2 and saves
 the answers. The page and the job don't care what the job does, so the same
 setup works for your own analysis.
