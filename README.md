@@ -66,7 +66,7 @@ Each tier's scripts load what they need: `module load python/3.12.1`, then the
 workshop's shared Python packages
 (`/home/groups/sh_support/bcritt/server_workshop/venv`). The `#SBATCH` lines at
 the top of each script are only used if you submit it as a batch job, which is
-how you'd run a server for longer than a session.
+how you'd run a server for a working session longer than `sh_dev` allows.
 
 ## Making your own environment
 

@@ -171,7 +171,8 @@ address file and token don't change.
 
 ## Running it for real
 
-For a model server that runs longer than a session, submit it as a batch job.
+For a working session longer than `sh_dev` allows, or a model too big for a
+slice, submit the server as a batch job. It stops when its `--time` runs out.
 `submit_server.sh` and `submit_ollama.sh` already ask for a full GPU on
 Sherlock's `gpu` machines in their `#SBATCH` lines:
 

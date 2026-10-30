@@ -251,8 +251,10 @@ would use a server.
 ## Running it for real
 
 In the workshop the server runs inside `sh_dev`, which lasts at most two hours.
-For a server you want to keep running longer, submit the same script as a
-**batch job**, which runs without you:
+For a working session longer than that, or one that needs more CPUs or memory,
+submit the same script as a **batch job**. Like a session, it stops when its
+time runs out: the `--time` line in the script (one hour here; set it to what
+your work needs).
 
 ```bash
 mkdir -p logs           # the job's printed output goes here
