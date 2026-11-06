@@ -36,7 +36,7 @@ setup works for your own analysis.
 | `submit_server.sh` | Starts the web server |
 | `submit_job.sh` | Runs the job |
 | `inputs/` | Where uploads go |
-| `results/` | What the page offers for download (starts with a sample) |
+| `results/` | What the page offers for download (made when the server starts) |
 
 ## 1. Start a session and the model
 
@@ -100,7 +100,7 @@ cat ~/.hpc_workshop/token
 ```
 
 Paste it into the Token box and press **Save**. The page now shows
-"connected", lists the sample results, and lists `inputs/`.
+"connected", with "no results yet" and the files in `inputs/`.
 
 The token works the same way as in the other tiers: the server refuses
 everything except the page itself without it. Pressing Save stores it in your

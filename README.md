@@ -133,3 +133,8 @@ Then change the `source ...` line in that tier's scripts to
 | `Access denied by pam_slurm_adopt` when you `ssh <machine>` | You don't have a session on that machine (it ended, or the name is wrong) |
 | The tunnel prints "Address already in use" | Another tunnel is using laptop port 8080. Close it (if your SSH config uses `ControlMaster`, `ssh -O exit login.sherlock.stanford.edu`), or use 8081 and http://localhost:8081 |
 | `python: No module named venv` | You ran `python`, which is Python 2 on Sherlock. Use `python3` |
+
+## For instructors
+
+How the shared environment and models were prepared, and what to check before
+teaching: [admin/README.md](admin/README.md).

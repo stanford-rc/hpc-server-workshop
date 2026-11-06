@@ -1,5 +1,4 @@
-# Virtual environments. Every tier's setup block says `python -m venv venv`,
-# so `venv/` is the one that actually matters here.
+# Virtual environments, if you make your own next to the code
 venv/
 .venv/
 env/
@@ -13,13 +12,10 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Workshop runtime artifacts — uploads and generated results. The committed
-# sample files under 04-web-gui/results/ are force-added; see .gitattributes
-# note in the README if you add more.
+# Tier 4 uploads and job results
 04-web-gui/inputs/*
 !04-web-gui/inputs/README.md
-04-web-gui/results/*
-!04-web-gui/results/example_*
+04-web-gui/results/
 
 # Slide build intermediates (slides-src/)
 slides-src/template.pptx

@@ -1,0 +1,10 @@
+# Everything the five workshop tiers need, in one environment.
+fastapi
+uvicorn[standard]
+requests
+pandas                 # Tier 1
+python-multipart       # Tier 4 (file uploads)
+mcp>=2.0               # Tier 3
+transformers           # Tier 2, transformers path
+torch
+accelerate

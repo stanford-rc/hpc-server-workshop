@@ -25,8 +25,8 @@ slide deck. The audience is researchers, not sysadmins.
   `normal`/`gpu`. Each user gets at most 2 dev sessions, 4 cores, 16 GB.
 - **Python comes from `ml python/3.12.1` plus the shared environment** at
   `/home/groups/sh_support/bcritt/server_workshop/venv` (built by
-  `build-env.sh` there, with `uv pip install --no-build`). The Tier 2 model is
-  pre-downloaded to `server_workshop/hf_cache`.
+  `admin/build-env.sh`, with `uv pip install --no-build`). The Tier 2 model is
+  pre-downloaded to `server_workshop/hf_cache/hub`. See `admin/README.md`.
 - **Test every learner-facing command on `dev`, exactly as written.**
 - **Cite Sherlock's public docs** (`sherlock.stanford.edu/docs`) rather than
   internal wikis or support tickets. This repo goes to researchers.
